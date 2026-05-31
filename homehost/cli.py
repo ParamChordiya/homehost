@@ -394,6 +394,14 @@ def start(
         handle_error(exc, "HH-002")
 
 
+@app.command(name="serve", hidden=True)
+def serve_alias(
+    project: Optional[str] = typer.Argument(None, help="Project name (default: current directory)."),
+) -> None:
+    """Alias for 'start'. Start the server for a project."""
+    start(project)
+
+
 # ── stop ───────────────────────────────────────────────────────────────────────
 
 @app.command()

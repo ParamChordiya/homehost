@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "homehost"
-version = "0.1.0"
+version = "0.1.1"
 description = "Turn your laptop into a web server. Host websites from home with zero config."
 readme = "README.md"
 license = { file = "LICENSE" }
