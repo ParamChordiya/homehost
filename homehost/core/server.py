@@ -6,19 +6,22 @@ import time
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Callable
+from typing import TYPE_CHECKING
 
 from homehost.core.config import (
     GlobalConfig,
     ProjectConfig,
+    list_projects,
     load_global_config,
     load_project_config,
     save_project_config,
-    list_projects,
 )
-from homehost.core.project import ProjectType
 from homehost.core.process import ProcessManager, ProcessState
+from homehost.core.project import ProjectType
 from homehost.utils.network import find_free_port, get_local_ip, wait_for_port
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class ServerStatus(str, Enum):
@@ -89,6 +92,7 @@ class ServerManager:
         5. Start tunnel if public access requested
         6. Return RunningProject with all URLs
         """
+
         def _log(msg: str) -> None:
             if progress:
                 progress(msg)
@@ -200,15 +204,17 @@ class ServerManager:
                 rp.status = state
                 projects.append(rp)
             else:
-                projects.append(RunningProject(
-                    name=name,
-                    project_type=cfg.type,
-                    status=state,
-                    local_port=cfg.server.port,
-                    local_url=f"http://{local_ip}:{cfg.server.port}",
-                    public_url=cfg.network.subdomain or "",
-                    start_time=0.0,
-                ))
+                projects.append(
+                    RunningProject(
+                        name=name,
+                        project_type=cfg.type,
+                        status=state,
+                        local_port=cfg.server.port,
+                        local_url=f"http://{local_ip}:{cfg.server.port}",
+                        public_url=cfg.network.subdomain or "",
+                        start_time=0.0,
+                    )
+                )
         return projects
 
     def stop_all(self) -> None:
@@ -223,29 +229,39 @@ class ServerManager:
 
     # ── Private helpers ───────────────────────────────────────────────────────
 
-    def _start_static(
-        self, name: str, project_dir: Path, port: int, cfg: ProjectConfig
-    ) -> None:
+    def _start_static(self, name: str, project_dir: Path, port: int, cfg: ProjectConfig) -> None:
         """Start Python's built-in http.server for a static site."""
         import sys
+
         command = [
-            sys.executable, "-m", "http.server", str(port),
-            "--directory", str(project_dir),
-            "--bind", "0.0.0.0",
+            sys.executable,
+            "-m",
+            "http.server",
+            str(port),
+            "--directory",
+            str(project_dir),
+            "--bind",
+            "0.0.0.0",
         ]
         log_file = self._log_file(name)
         self._process_manager.start(name, command, project_dir, log_file=log_file)
 
     def _start_app_server(
-        self, name: str, project_dir: Path, port: int,
-        cfg: ProjectConfig, project_type: ProjectType,
+        self,
+        name: str,
+        project_dir: Path,
+        port: int,
+        cfg: ProjectConfig,
+        project_type: ProjectType,
     ) -> None:
         """Start an application server process."""
         import sys
+
         env = {"PORT": str(port), "HOST": "0.0.0.0"}
 
         if cfg.server.start_command:
             import shlex
+
             command = shlex.split(cfg.server.start_command)
         elif project_type == ProjectType.FLASK:
             command = [sys.executable, "-m", "flask", "run", "--host=0.0.0.0", f"--port={port}"]
@@ -267,10 +283,12 @@ class ServerManager:
     def _start_tunnel(self, name: str, port: int, cfg: ProjectConfig) -> str:
         """Start a Cloudflare quick tunnel. Returns the public URL."""
         from homehost.core.config import load_global_config
+
         global_cfg = load_global_config()
         cloudflared_path = global_cfg.server.cloudflared_path or "cloudflared"
 
         from homehost.network.tunnel import TunnelManager
+
         tm = TunnelManager(cloudflared_path, self._process_manager)
         info = tm.start_quick_tunnel(name, port)
         return info.url
@@ -282,4 +300,5 @@ class ServerManager:
 
     def _is_port_taken(self, port: int) -> bool:
         from homehost.utils.network import is_port_in_use
+
         return is_port_in_use(port)

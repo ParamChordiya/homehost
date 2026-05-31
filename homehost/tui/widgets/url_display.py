@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
-from textual.app import ComposeResult
+import contextlib
+from typing import TYPE_CHECKING
+
 from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
 from textual.widget import Widget
 from textual.widgets import Button, Label, Static
+
+if TYPE_CHECKING:
+    from textual.app import ComposeResult
 
 
 class UrlDisplay(Widget):
@@ -101,7 +106,7 @@ class UrlDisplay(Widget):
             if self.url:
                 yield Label(self.url, id="url-value")
                 yield Button("Copy", id="btn-copy")
-                yield Button("QR",   id="btn-qr")
+                yield Button("QR", id="btn-qr")
             else:
                 yield Label("(not set)", id="no-url-hint")
         with Vertical(id="qr-area"):
@@ -127,10 +132,8 @@ class UrlDisplay(Widget):
             pass
 
     def watch_show_qr(self, show: bool) -> None:
-        try:
+        with contextlib.suppress(Exception):
             self.query_one("#qr-area").display = show
-        except Exception:
-            pass
 
     # ── Events ────────────────────────────────────────────────────────────────
 
@@ -148,6 +151,7 @@ class UrlDisplay(Widget):
             return
         try:
             import pyperclip  # type: ignore[import]
+
             pyperclip.copy(self.url)
             self.app.notify(f"Copied: {self.url}", title="Copied!")
         except ImportError:
@@ -169,7 +173,9 @@ class UrlDisplay(Widget):
     @staticmethod
     def _system_copy(text: str) -> bool:
         """Attempt clipboard copy via pbcopy (macOS) or xclip (Linux)."""
-        import subprocess, platform
+        import platform
+        import subprocess
+
         cmds = []
         if platform.system() == "Darwin":
             cmds = [["pbcopy"]]
@@ -206,10 +212,8 @@ class UrlDisplay(Widget):
 
         if self._qr_lines:
             qr_text = "\n".join(self._qr_lines)
-            try:
+            with contextlib.suppress(Exception):
                 self.query_one("#qr-code", Static).update(qr_text)
-            except Exception:
-                pass
             qr_area.display = True
             self.show_qr = True
 
@@ -217,6 +221,7 @@ class UrlDisplay(Widget):
         """Render QR code as ASCII art using the qrcode library."""
         try:
             import qrcode  # type: ignore[import]
+
             qr = qrcode.QRCode(
                 version=None,
                 error_correction=qrcode.constants.ERROR_CORRECT_L,

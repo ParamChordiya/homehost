@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-import time
+import contextlib
 import webbrowser
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from textual import work
-from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Container, Horizontal, ScrollableContainer, Vertical
+from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from textual.widgets import (
     Button,
@@ -18,14 +18,15 @@ from textual.widgets import (
     Header,
     Label,
     RichLog,
-    Static,
 )
 
+if TYPE_CHECKING:
+    from textual.app import ComposeResult
 
 _STATUS_STYLE = {
     "running": ("[#4ade80]● running[/]", "#4ade80"),
     "stopped": ("[#94a3b8]○ stopped[/]", "#94a3b8"),
-    "error":   ("[#f87171]✖ error[/]",   "#f87171"),
+    "error": ("[#f87171]✖ error[/]", "#f87171"),
     "unknown": ("[#fbbf24]? unknown[/]", "#fbbf24"),
 }
 
@@ -34,15 +35,15 @@ class ManageScreen(Screen):
     """Full project management table with per-row actions."""
 
     BINDINGS = [
-        Binding("r",      "refresh",         "Refresh"),
-        Binding("s",      "start_selected",  "Start"),
-        Binding("p",      "stop_selected",   "Stop"),
-        Binding("x",      "restart_selected","Restart"),
-        Binding("l",      "logs_selected",   "Logs"),
-        Binding("d",      "delete_selected", "Delete"),
-        Binding("o",      "open_selected",   "Open URL"),
-        Binding("escape", "go_back",         "Back"),
-        Binding("q",      "app.quit",        "Quit"),
+        Binding("r", "refresh", "Refresh"),
+        Binding("s", "start_selected", "Start"),
+        Binding("p", "stop_selected", "Stop"),
+        Binding("x", "restart_selected", "Restart"),
+        Binding("l", "logs_selected", "Logs"),
+        Binding("d", "delete_selected", "Delete"),
+        Binding("o", "open_selected", "Open URL"),
+        Binding("escape", "go_back", "Back"),
+        Binding("q", "app.quit", "Quit"),
     ]
 
     DEFAULT_CSS = """
@@ -106,13 +107,13 @@ class ManageScreen(Screen):
         table.add_columns("Name", "Type", "Status", "Port", "Local URL", "Public URL")
         yield table
         with Horizontal(id="action-bar"):
-            yield Button("▶ Start",   id="btn-start",   classes="-success")
-            yield Button("■ Stop",    id="btn-stop",     classes="-warning")
+            yield Button("▶ Start", id="btn-start", classes="-success")
+            yield Button("■ Stop", id="btn-stop", classes="-warning")
             yield Button("↺ Restart", id="btn-restart")
-            yield Button("📋 Logs",   id="btn-logs")
-            yield Button("🌐 Open",   id="btn-open")
-            yield Button("🗑 Delete",  id="btn-delete",  classes="-error")
-            yield Button("← Back",    id="btn-back")
+            yield Button("📋 Logs", id="btn-logs")
+            yield Button("🌐 Open", id="btn-open")
+            yield Button("🗑 Delete", id="btn-delete", classes="-error")
+            yield Button("← Back", id="btn-back")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -123,6 +124,7 @@ class ManageScreen(Screen):
         """Load all projects and populate the table."""
         try:
             from homehost.core.config import list_projects, load_project_config
+
             names = list_projects()
         except Exception:
             names = []
@@ -160,6 +162,7 @@ class ManageScreen(Screen):
         try:
             from homehost.core.config import homehost_dir
             from homehost.core.process import ProcessManager
+
             run_dir = homehost_dir() / "run"
             pm = ProcessManager(run_dir)
             return pm.status(name).value
@@ -242,6 +245,7 @@ class ManageScreen(Screen):
             return
         try:
             from homehost.core.config import load_project_config
+
             cfg = load_project_config(name)
             url = f"http://localhost:{cfg.server.port}"
             webbrowser.open(url)
@@ -259,12 +263,15 @@ class ManageScreen(Screen):
         try:
             from homehost.core.config import homehost_dir, load_project_config
             from homehost.core.process import ProcessManager
+
             cfg = load_project_config(name)
             run_dir = homehost_dir() / "run"
             pm = ProcessManager(run_dir)
-            cmd = cfg.server.start_command.split() if cfg.server.start_command else [
-                "python", "-m", "http.server", str(cfg.server.port)
-            ]
+            cmd = (
+                cfg.server.start_command.split()
+                if cfg.server.start_command
+                else ["python", "-m", "http.server", str(cfg.server.port)]
+            )
             pm.start(name, cmd, Path(cfg.path))
             self.app.call_from_thread(self.app.notify, f"Started: {name}")
         except Exception as exc:
@@ -276,6 +283,7 @@ class ManageScreen(Screen):
         try:
             from homehost.core.config import homehost_dir
             from homehost.core.process import ProcessManager
+
             run_dir = homehost_dir() / "run"
             pm = ProcessManager(run_dir)
             pm.stop(name)
@@ -289,6 +297,7 @@ class ManageScreen(Screen):
         try:
             from homehost.core.config import homehost_dir
             from homehost.core.process import ProcessManager
+
             run_dir = homehost_dir() / "run"
             pm = ProcessManager(run_dir)
             pm.restart(name)
@@ -299,6 +308,7 @@ class ManageScreen(Screen):
 
 
 # ── Confirm delete modal ──────────────────────────────────────────────────────
+
 
 class ConfirmDeleteScreen(Screen):
     """Confirmation modal before deleting a project."""
@@ -364,13 +374,12 @@ class ConfirmDeleteScreen(Screen):
                 id="confirm-msg",
             )
             yield Label(
-                "This will remove the HomeHost configuration.\n"
-                "Your project files will NOT be deleted.",
+                "This will remove the HomeHost configuration.\n" "Your project files will NOT be deleted.",
                 id="confirm-warning",
             )
             with Horizontal(id="confirm-buttons"):
                 yield Button("🗑  Delete", id="btn-confirm-delete", classes="-error")
-                yield Button("Cancel",    id="btn-confirm-cancel")
+                yield Button("Cancel", id="btn-confirm-cancel")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "btn-confirm-delete":
@@ -385,6 +394,7 @@ class ConfirmDeleteScreen(Screen):
             # Stop first
             from homehost.core.config import delete_project_config, homehost_dir
             from homehost.core.process import ProcessManager
+
             run_dir = homehost_dir() / "run"
             pm = ProcessManager(run_dir)
             pm.stop(name)
@@ -394,7 +404,7 @@ class ConfirmDeleteScreen(Screen):
             self.app.call_from_thread(self.app.notify, f"Delete failed: {exc}", severity="error")
 
         def _done() -> None:
-            self.app.pop_screen()   # close confirm dialog
+            self.app.pop_screen()  # close confirm dialog
             self._manage.load_projects()
 
         self.app.call_from_thread(_done)
@@ -402,13 +412,14 @@ class ConfirmDeleteScreen(Screen):
 
 # ── Log viewer screen ─────────────────────────────────────────────────────────
 
+
 class LogScreen(Screen):
     """Full-screen log viewer for a single project."""
 
     BINDINGS = [
-        Binding("c",      "clear_logs", "Clear"),
-        Binding("escape", "go_back",    "Back"),
-        Binding("q",      "go_back",    "Back"),
+        Binding("c", "clear_logs", "Clear"),
+        Binding("escape", "go_back", "Back"),
+        Binding("q", "go_back", "Back"),
     ]
 
     DEFAULT_CSS = """
@@ -475,6 +486,7 @@ class LogScreen(Screen):
         """Load the full log file for the project."""
         try:
             from homehost.core.config import homehost_dir
+
             log_path = homehost_dir() / "run" / f"{self._project_name}.log"
             if not log_path.exists():
                 self.app.call_from_thread(
@@ -504,6 +516,7 @@ class LogScreen(Screen):
         """Append newly written lines since last read."""
         try:
             from homehost.core.config import homehost_dir
+
             log_path = homehost_dir() / "run" / f"{self._project_name}.log"
             if not log_path.exists():
                 return
@@ -536,10 +549,8 @@ class LogScreen(Screen):
         return line
 
     def action_clear_logs(self) -> None:
-        try:
+        with contextlib.suppress(Exception):
             self.query_one("#log-view", RichLog).clear()
-        except Exception:
-            pass
 
     def action_go_back(self) -> None:
         self.app.pop_screen()

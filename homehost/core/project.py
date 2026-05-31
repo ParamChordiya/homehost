@@ -5,8 +5,10 @@ from __future__ import annotations
 import json
 import sys
 from enum import Enum
-from pathlib import Path
-from typing import NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -140,9 +142,7 @@ def detect_project_type(directory: Path) -> DetectionResult:
 
         # generic Node
         name = pkg.get("name", "")
-        return DetectionResult(
-            ProjectType.NODE, "probable", f"Found package.json ('{name}')", pkg.get("version", "")
-        )
+        return DetectionResult(ProjectType.NODE, "probable", f"Found package.json ('{name}')", pkg.get("version", ""))
 
     # ── Python detection ───────────────────────────────────────────────────────
     python_markers = [
@@ -164,9 +164,7 @@ def detect_project_type(directory: Path) -> DetectionResult:
                 ProjectType.FASTAPI, "certain", "Found 'fastapi' in dependencies", deps.get("fastapi", "")
             )
         if "flask" in deps:
-            return DetectionResult(
-                ProjectType.FLASK, "certain", "Found 'flask' in dependencies", deps.get("flask", "")
-            )
+            return DetectionResult(ProjectType.FLASK, "certain", "Found 'flask' in dependencies", deps.get("flask", ""))
 
         # Check source files for imports
         if _any_file_imports(directory, "django"):
@@ -189,14 +187,13 @@ def detect_project_type(directory: Path) -> DetectionResult:
     # ── Fallback ───────────────────────────────────────────────────────────────
     html_files = list(directory.glob("*.html"))
     if html_files:
-        return DetectionResult(
-            ProjectType.STATIC, "probable", f"Found {len(html_files)} HTML file(s)", ""
-        )
+        return DetectionResult(ProjectType.STATIC, "probable", f"Found {len(html_files)} HTML file(s)", "")
 
     return DetectionResult(ProjectType.CUSTOM, "guessed", "No recognizable project markers found", "")
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 def _collect_python_deps(directory: Path) -> dict[str, str]:
     """Extract package names from common Python dependency files."""

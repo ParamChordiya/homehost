@@ -64,12 +64,14 @@ def mock_process_manager():
 @pytest.fixture
 def sample_global_config():
     from homehost.core.config import GlobalConfig
+
     return GlobalConfig()
 
 
 @pytest.fixture
 def sample_project_config():
     from homehost.core.config import ProjectConfig
+
     cfg = ProjectConfig()
     cfg.name = "test-project"
     cfg.type = "static"

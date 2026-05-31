@@ -2,24 +2,28 @@
 
 from __future__ import annotations
 
+import contextlib
 from collections import deque
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal
 from textual.reactive import reactive
 from textual.widget import Widget
-from textual.widgets import Button, Input, Label, RichLog, Static
+from textual.widgets import Button, Input, Label, RichLog
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from textual.app import ComposeResult
 
 _LEVEL_COLORS = {
-    "DEBUG":    "#94a3b8",   # dim blue-grey
-    "INFO":     "#f8fafc",   # white
-    "WARNING":  "#fbbf24",   # amber
-    "WARN":     "#fbbf24",
-    "ERROR":    "#f87171",   # red
+    "DEBUG": "#94a3b8",  # dim blue-grey
+    "INFO": "#f8fafc",  # white
+    "WARNING": "#fbbf24",  # amber
+    "WARN": "#fbbf24",
+    "ERROR": "#f87171",  # red
     "CRITICAL": "#f87171",
-    "SUCCESS":  "#4ade80",   # green
+    "SUCCESS": "#4ade80",  # green
 }
 
 
@@ -122,8 +126,8 @@ class LogViewer(Widget):
         with Horizontal(id="log-toolbar"):
             yield Label("🔍 Filter:", id="filter-label")
             yield Input(placeholder="Type to filter…", id="filter-input")
-            yield Button("Clear",         id="btn-clear",         classes="-warning")
-            yield Button("↓ Bottom",      id="btn-scroll-bottom")
+            yield Button("Clear", id="btn-clear", classes="-warning")
+            yield Button("↓ Bottom", id="btn-scroll-bottom")
         yield RichLog(
             id="log-body",
             wrap=True,
@@ -158,10 +162,8 @@ class LogViewer(Widget):
     def clear(self) -> None:
         """Clear the buffer and the displayed log."""
         self._buffer.clear()
-        try:
+        with contextlib.suppress(Exception):
             self.query_one("#log-body", RichLog).clear()
-        except Exception:
-            pass
 
     def load_from_file(self, path: Path) -> None:
         """Read the last ``max_lines`` lines from *path* and display them."""

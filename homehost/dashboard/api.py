@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import platform
 import subprocess
 import time
@@ -19,12 +20,8 @@ from pydantic import BaseModel
 
 from homehost import __version__
 from homehost.core.config import (
-    GlobalConfig,
-    load_global_config,
-    load_project_config,
     list_projects,
-    save_global_config,
-    save_project_config,
+    load_project_config,
 )
 from homehost.core.process import ProcessManager, ProcessState
 
@@ -102,12 +99,12 @@ app = FastAPI(title="HomeHost Dashboard", version="0.1.0")
 
 # ── DB helpers ─────────────────────────────────────────────────────────────────
 
+
 async def _ensure_db() -> None:
     """Create metrics DB and table if they don't exist."""
     _DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     async with aiosqlite.connect(_DB_PATH) as db:
-        await db.execute(
-            """
+        await db.execute("""
             CREATE TABLE IF NOT EXISTS requests (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 project_name TEXT NOT NULL,
@@ -116,8 +113,7 @@ async def _ensure_db() -> None:
                 response_time_ms INTEGER,
                 path TEXT
             )
-            """
-        )
+            """)
         await db.commit()
 
 
@@ -154,6 +150,7 @@ async def _count_errors(project_name: str, since: int | None = None) -> int:
 
 
 # ── Project status helper ──────────────────────────────────────────────────────
+
 
 def _day_start_ts() -> int:
     """Unix timestamp for midnight today (UTC)."""
@@ -207,6 +204,7 @@ async def _build_project_status(name: str) -> ProjectStatus:
 
 # ── WebSocket connection manager ───────────────────────────────────────────────
 
+
 class _ConnectionManager:
     def __init__(self) -> None:
         self._clients: list[WebSocket] = []
@@ -218,10 +216,8 @@ class _ConnectionManager:
 
     def disconnect(self, ws: WebSocket) -> None:
         self._clients.discard_if_present(ws)
-        try:
+        with contextlib.suppress(ValueError):
             self._clients.remove(ws)
-        except ValueError:
-            pass
         log.debug("ws client disconnected", total=len(self._clients))
 
     async def broadcast(self, payload: Any) -> None:
@@ -232,16 +228,15 @@ class _ConnectionManager:
             except Exception:
                 dead.append(ws)
         for ws in dead:
-            try:
+            with contextlib.suppress(ValueError):
                 self._clients.remove(ws)
-            except ValueError:
-                pass
 
 
 _manager = _ConnectionManager()
 
 
 # ── Background broadcast task ──────────────────────────────────────────────────
+
 
 async def _broadcast_loop() -> None:
     await _ensure_db()
@@ -269,6 +264,7 @@ async def _startup() -> None:
 
 
 # ── REST endpoints ─────────────────────────────────────────────────────────────
+
 
 @app.get("/api/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
@@ -319,6 +315,7 @@ async def project_action(name: str, body: ProjectAction) -> ActionResponse:
             if not cmd_str:
                 return ActionResponse(success=False, message=f"No start command configured for '{name}'.")
             import shlex
+
             command = shlex.split(cmd_str)
             project_path = Path(cfg.path) if cfg.path else Path.cwd()
             pm.start(name, command, cwd=project_path)
@@ -335,6 +332,7 @@ async def project_action(name: str, body: ProjectAction) -> ActionResponse:
                 if not cmd_str:
                     return ActionResponse(success=False, message=f"No start command configured for '{name}'.")
                 import shlex
+
                 command = shlex.split(cmd_str)
                 project_path = Path(cfg.path) if cfg.path else Path.cwd()
                 pm.start(name, command, cwd=project_path)
@@ -405,9 +403,7 @@ async def get_system_info() -> SystemInfo:
     os_str = f"{platform.system()} {platform.release()}"
     caddy_version = ""
     try:
-        result = subprocess.run(
-            ["caddy", "version"], capture_output=True, text=True, timeout=3
-        )
+        result = subprocess.run(["caddy", "version"], capture_output=True, text=True, timeout=3)
         caddy_version = result.stdout.strip().split()[0] if result.returncode == 0 else "not installed"
     except (FileNotFoundError, subprocess.TimeoutExpired):
         caddy_version = "not installed"
@@ -424,6 +420,7 @@ async def get_system_info() -> SystemInfo:
 
 
 # ── WebSocket endpoint ─────────────────────────────────────────────────────────
+
 
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket) -> None:
@@ -456,6 +453,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
 if _STATIC_DIR.exists():
     app.mount("/", StaticFiles(directory=str(_STATIC_DIR), html=True), name="static")
 else:
+
     @app.get("/", response_class=HTMLResponse)
     async def root() -> HTMLResponse:
         return HTMLResponse("<h1>HomeHost Dashboard — static files not found</h1>")

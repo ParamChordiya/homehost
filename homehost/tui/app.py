@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import webbrowser
 
-from textual.app import App, ComposeResult
+from textual.app import App
 from textual.binding import Binding
 
 
@@ -208,6 +208,7 @@ class HomeHostApp(App):
 
     def on_mount(self) -> None:
         from homehost.tui.screens.welcome import WelcomeScreen
+
         self.push_screen(WelcomeScreen())
 
     def action_open_dashboard(self) -> None:
@@ -215,9 +216,7 @@ class HomeHostApp(App):
 
     def action_help(self) -> None:
         self.notify(
-            "HomeHost v0.1.0\n"
-            "Q → Quit  D → Dashboard  ? → Help\n"
-            "Use the menu or keyboard shortcuts to navigate.",
+            "HomeHost v0.1.0\n" "Q → Quit  D → Dashboard  ? → Help\n" "Use the menu or keyboard shortcuts to navigate.",
             title="HomeHost Help",
             severity="information",
             timeout=6,

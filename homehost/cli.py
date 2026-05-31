@@ -1,6 +1,8 @@
 """HomeHost CLI — the command-line interface for HomeHost."""
+
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
 import shutil
@@ -11,7 +13,6 @@ import traceback
 import webbrowser
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich import print as rprint
@@ -32,6 +33,7 @@ err_console = Console(stderr=True)
 
 # ── Error handling ─────────────────────────────────────────────────────────────
 
+
 def _log_dir() -> Path:
     log_dir = Path.home() / ".homehost" / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -43,9 +45,7 @@ def _configure_file_logger() -> logging.Logger:
     if logger.handlers:
         return logger
     handler = logging.FileHandler(_log_dir() / "homehost.log", encoding="utf-8")
-    handler.setFormatter(
-        logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-    )
+    handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
     logger.addHandler(handler)
     logger.setLevel(logging.DEBUG)
     return logger
@@ -73,14 +73,16 @@ def handle_error(error: Exception, code: str = "HH-000") -> None:
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
+
 def _get_process_manager():
     """Return a ProcessManager rooted at ~/.homehost/run."""
     from homehost.core.process import ProcessManager
+
     run_dir = Path.home() / ".homehost" / "run"
     return ProcessManager(run_dir)
 
 
-def _resolve_project_name(project: Optional[str]) -> str:
+def _resolve_project_name(project: str | None) -> str:
     """Return project name: explicit arg > current directory name."""
     if project:
         return project
@@ -89,6 +91,7 @@ def _resolve_project_name(project: Optional[str]) -> str:
 
 def _project_exists(name: str) -> bool:
     from homehost.core.config import list_projects
+
     return name in list_projects()
 
 
@@ -106,6 +109,7 @@ def _uptime_str(start_time: float) -> str:
 
 def _pick_free_port(preferred: int = 8080) -> int:
     from homehost.core.detector import find_available_port, is_port_in_use
+
     if not is_port_in_use(preferred):
         return preferred
     port = find_available_port(8080, 8099)
@@ -122,10 +126,12 @@ def _print_qr(url: str) -> None:
     """Print a simple QR code hint (requires qrcode or just prints URL)."""
     try:
         import qrcode  # type: ignore
+
         qr = qrcode.QRCode(border=1)
         qr.add_data(url)
         qr.make(fit=True)
         from io import StringIO
+
         buf = StringIO()
         qr.print_ascii(out=buf, invert=True)
         console.print(f"[dim]{buf.getvalue()}[/dim]")
@@ -135,6 +141,7 @@ def _print_qr(url: str) -> None:
 
 # ── Default callback ───────────────────────────────────────────────────────────
 
+
 @app.callback(invoke_without_command=True)
 def main(
     ctx: typer.Context,
@@ -143,11 +150,13 @@ def main(
     """Launch the HomeHost TUI. Run [bold]homehost --help[/bold] for CLI commands."""
     if version:
         from homehost import __version__
+
         rprint(f"[bold blue]HomeHost[/bold blue] v{__version__}")
         raise typer.Exit()
     if ctx.invoked_subcommand is None:
         try:
             from homehost.tui.app import HomeHostApp
+
             HomeHostApp().run()
         except ImportError as e:
             err_console.print(f"[red]TUI not available:[/red] {e}")
@@ -157,20 +166,26 @@ def main(
 
 # ── init ───────────────────────────────────────────────────────────────────────
 
+
 @app.command()
 def init(
-    path: Optional[Path] = typer.Argument(None, help="Project directory (default: current directory)."),
-    type_: Optional[str] = typer.Option(None, "--type", "-t", help="Project type (static, flask, fastapi, django, nextjs, react, node, docker, custom)."),
-    name: Optional[str] = typer.Option(None, "--name", "-n", help="Project name (default: directory name)."),
+    path: Path | None = typer.Argument(None, help="Project directory (default: current directory)."),
+    type_: str | None = typer.Option(
+        None, "--type", "-t", help="Project type (static, flask, fastapi, django, nextjs, react, node, docker, custom)."
+    ),
+    name: str | None = typer.Option(None, "--name", "-n", help="Project name (default: directory name)."),
 ) -> None:
     """Initialize a new HomeHost project in PATH (default: current directory)."""
     try:
         from homehost.core.config import (
-            ProjectConfig, ProjectServerConfig, ProjectNetworkConfig,
-            list_projects, save_project_config,
+            ProjectConfig,
+            ProjectNetworkConfig,
+            ProjectServerConfig,
+            list_projects,
+            save_project_config,
         )
-        from homehost.core.project import detect_project_type, validate_project_directory, ProjectType
         from homehost.core.detector import find_available_port
+        from homehost.core.project import ProjectType, detect_project_type, validate_project_directory
 
         target = (path or Path.cwd()).resolve()
         project_name = name or target.name
@@ -263,14 +278,12 @@ def _scaffold_project(target: Path, ptype) -> None:
     if ptype == ProjectType.STATIC:
         (target / "index.html").write_text(
             '<!DOCTYPE html>\n<html lang="en">\n<head><meta charset="UTF-8">'
-            '<title>My HomeHost Site</title></head>\n'
-            '<body><h1>Hello from HomeHost!</h1></body>\n</html>\n',
+            "<title>My HomeHost Site</title></head>\n"
+            "<body><h1>Hello from HomeHost!</h1></body>\n</html>\n",
             encoding="utf-8",
         )
     elif ptype in (ProjectType.FLASK, ProjectType.FASTAPI, ProjectType.DJANGO):
-        (target / "requirements.txt").write_text(
-            f"{ptype.value}\n", encoding="utf-8"
-        )
+        (target / "requirements.txt").write_text(f"{ptype.value}\n", encoding="utf-8")
         if ptype == ProjectType.FLASK:
             (target / "app.py").write_text(
                 "from flask import Flask\napp = Flask(__name__)\n\n"
@@ -285,8 +298,7 @@ def _scaffold_project(target: Path, ptype) -> None:
             )
     elif ptype in (ProjectType.NEXTJS, ProjectType.REACT, ProjectType.NODE):
         (target / "package.json").write_text(
-            '{\n  "name": "homehost-app",\n  "version": "1.0.0",\n'
-            '  "scripts": {"start": "node index.js"}\n}\n',
+            '{\n  "name": "homehost-app",\n  "version": "1.0.0",\n' '  "scripts": {"start": "node index.js"}\n}\n',
             encoding="utf-8",
         )
         (target / "index.js").write_text(
@@ -300,14 +312,14 @@ def _scaffold_project(target: Path, ptype) -> None:
 
 # ── start ──────────────────────────────────────────────────────────────────────
 
+
 @app.command()
 def start(
-    project: Optional[str] = typer.Argument(None, help="Project name (default: current directory)."),
+    project: str | None = typer.Argument(None, help="Project name (default: current directory)."),
 ) -> None:
     """Start the server for a project."""
     try:
-        from homehost.core.config import load_project_config, list_projects
-        from homehost.core.process import ProcessManager, ProcessState
+        from homehost.core.config import load_project_config
         from homehost.core.detector import get_local_ip
 
         name = _resolve_project_name(project)
@@ -345,14 +357,13 @@ def start(
             if ret.returncode != 0:
                 err_console.print(
                     Panel(
-                        f"[red]Build failed[/red] (exit {ret.returncode})\n\n"
-                        f"[dim]{ret.stderr[-1000:]}[/dim]",
+                        f"[red]Build failed[/red] (exit {ret.returncode})\n\n" f"[dim]{ret.stderr[-1000:]}[/dim]",
                         title="[red]Build Error[/red]",
                         border_style="red",
                     )
                 )
                 raise typer.Exit(1)
-            console.print(f"  [green]✓[/green] Build complete")
+            console.print("  [green]✓[/green] Build complete")
 
         # Start step
         if cfg.server.start_command:
@@ -360,8 +371,12 @@ def start(
         else:
             # Fallback: static file server via Python
             command = [
-                sys.executable, "-m", "http.server", str(cfg.server.port),
-                "--directory", str(project_path),
+                sys.executable,
+                "-m",
+                "http.server",
+                str(cfg.server.port),
+                "--directory",
+                str(project_path),
             ]
 
         with console.status(f"[blue]Starting {name}…[/blue]"):
@@ -396,13 +411,18 @@ def start(
 
 @app.command()
 def serve(
-    path: Optional[Path] = typer.Argument(None, help="Directory to serve (default: current directory)."),
-    port: Optional[int] = typer.Option(None, "--port", "-p", help="Port to listen on (default: auto-pick 8080-8099)."),
+    path: Path | None = typer.Argument(None, help="Directory to serve (default: current directory)."),
+    port: int | None = typer.Option(None, "--port", "-p", help="Port to listen on (default: auto-pick 8080-8099)."),
     public: bool = typer.Option(False, "--public", help="Start a free Cloudflare Tunnel for public internet access."),
-    type_: Optional[str] = typer.Option(None, "--type", "-t", metavar="TYPE",
-                                         help="Force project type: static, flask, fastapi, django, nextjs, react, node."),
+    type_: str | None = typer.Option(
+        None,
+        "--type",
+        "-t",
+        metavar="TYPE",
+        help="Force project type: static, flask, fastapi, django, nextjs, react, node.",
+    ),
     no_reload: bool = typer.Option(False, "--no-reload", help="Disable file-change auto-reload."),
-    name: Optional[str] = typer.Option(None, "--name", "-n", help="Project name (default: directory name)."),
+    name: str | None = typer.Option(None, "--name", "-n", help="Project name (default: directory name)."),
 ) -> None:
     """Detect, register, and serve a project directory in one step.
 
@@ -414,16 +434,18 @@ def serve(
       homehost serve ~/my-site --public
       homehost serve . --port 3000 --type flask
     """
-    import signal
 
     try:
         from homehost.core.config import (
-            load_project_config, save_project_config, ProjectConfig,
-            ProjectServerConfig, ProjectNetworkConfig, ProjectWatcherConfig,
-            ProjectSecurityConfig, projects_dir,
+            ProjectConfig,
+            ProjectNetworkConfig,
+            ProjectSecurityConfig,
+            ProjectServerConfig,
+            ProjectWatcherConfig,
+            save_project_config,
         )
-        from homehost.core.project import detect_project_type, validate_project_directory, ProjectType
         from homehost.core.detector import get_local_ip
+        from homehost.core.project import ProjectType, detect_project_type, validate_project_directory
         from homehost.utils.network import find_free_port, is_port_in_use
 
         target = Path(path or Path.cwd()).resolve()
@@ -436,7 +458,7 @@ def serve(
         if type_:
             try:
                 detected_type = ProjectType(type_.lower())
-                detect_label = f"[dim](forced)[/dim]"
+                detect_label = "[dim](forced)[/dim]"
             except ValueError:
                 err_console.print(
                     f"[red]Unknown project type '{type_}'.[/red] "
@@ -488,8 +510,16 @@ def serve(
         pm = _get_process_manager()
 
         if detected_type == ProjectType.STATIC or not cfg.server.start_command:
-            command = [sys.executable, "-m", "http.server", str(chosen_port),
-                       "--directory", str(target), "--bind", "0.0.0.0"]
+            command = [
+                sys.executable,
+                "-m",
+                "http.server",
+                str(chosen_port),
+                "--directory",
+                str(target),
+                "--bind",
+                "0.0.0.0",
+            ]
         else:
             command = cfg.server.start_command.split()
 
@@ -517,6 +547,7 @@ def serve(
         public_url = ""
         if public:
             from homehost.core.config import load_global_config
+
             gcfg = load_global_config()
             cloudflared = gcfg.server.cloudflared_path or "cloudflared"
             if not shutil.which(cloudflared) and cloudflared == "cloudflared":
@@ -528,6 +559,7 @@ def serve(
                 with console.status("[blue]Starting Cloudflare Tunnel…[/blue]"):
                     try:
                         from homehost.network.tunnel import TunnelManager
+
                         tm = TunnelManager(cloudflared, pm)
                         info = tm.start_quick_tunnel(f"{project_name}_tunnel", chosen_port)
                         public_url = info.url
@@ -545,9 +577,7 @@ def serve(
         body += f"\n  [dim]Logs: {log_file}[/dim]"
         body += "\n\n  Press [bold]Ctrl+C[/bold] to stop."
 
-        console.print(
-            Panel(body, title=f"[bold green]✓  {project_name} is running[/bold green]", border_style="green")
-        )
+        console.print(Panel(body, title=f"[bold green]✓  {project_name} is running[/bold green]", border_style="green"))
         _print_qr(public_url or local_url)
 
         # ── File watcher ──────────────────────────────────────────────────────
@@ -557,7 +587,7 @@ def serve(
                 from homehost.deploy.watcher import ProjectWatcher
 
                 def _on_change(paths: list) -> None:
-                    console.print(f"  [blue]♻[/blue]  File change detected — reloading…")
+                    console.print("  [blue]♻[/blue]  File change detected — reloading…")
 
                 watcher = ProjectWatcher(target, _on_change)
                 watcher.start()
@@ -568,8 +598,9 @@ def serve(
         try:
             while pm.is_running(project_name):
                 time.sleep(1)
-            console.print(f"\n[yellow]Server process stopped unexpectedly.[/yellow] "
-                          f"Check logs: [dim]{log_file}[/dim]")
+            console.print(
+                f"\n[yellow]Server process stopped unexpectedly.[/yellow] " f"Check logs: [dim]{log_file}[/dim]"
+            )
         except KeyboardInterrupt:
             console.print(f"\n[yellow]Stopping {project_name}…[/yellow]")
             pm.stop(project_name)
@@ -590,9 +621,10 @@ def serve(
 
 # ── stop ───────────────────────────────────────────────────────────────────────
 
+
 @app.command()
 def stop(
-    project: Optional[str] = typer.Argument(None, help="Project name (default: current directory)."),
+    project: str | None = typer.Argument(None, help="Project name (default: current directory)."),
     all_: bool = typer.Option(False, "--all", "-a", help="Stop ALL running projects."),
 ) -> None:
     """Stop the server for a project (or all projects with --all)."""
@@ -629,9 +661,10 @@ def stop(
 
 # ── restart ────────────────────────────────────────────────────────────────────
 
+
 @app.command()
 def restart(
-    project: Optional[str] = typer.Argument(None, help="Project name (default: current directory)."),
+    project: str | None = typer.Argument(None, help="Project name (default: current directory)."),
 ) -> None:
     """Stop and restart a project's server."""
     try:
@@ -649,7 +682,7 @@ def restart(
         if pm.is_running(name):
             with console.status(f"[blue]Stopping {name}…[/blue]"):
                 pm.stop(name)
-            console.print(f"  [yellow]↓[/yellow] Stopped")
+            console.print("  [yellow]↓[/yellow] Stopped")
 
         # Re-delegate to start command logic
         ctx = typer.get_current_context()
@@ -663,6 +696,7 @@ def restart(
 
 # ── status ─────────────────────────────────────────────────────────────────────
 
+
 @app.command()
 def status() -> None:
     """Show status of all HomeHost projects."""
@@ -672,8 +706,7 @@ def status() -> None:
         projects = list_projects()
         if not projects:
             rprint(
-                "[yellow]No projects found.[/yellow] "
-                "Run [bold]homehost init[/bold] to set up your first project."
+                "[yellow]No projects found.[/yellow] " "Run [bold]homehost init[/bold] to set up your first project."
             )
             return
 
@@ -726,6 +759,7 @@ def status() -> None:
 
 # ── list ───────────────────────────────────────────────────────────────────────
 
+
 @app.command(name="list")
 def list_projects_cmd() -> None:
     """List all registered HomeHost projects."""
@@ -769,9 +803,10 @@ def list_projects_cmd() -> None:
 
 # ── logs ───────────────────────────────────────────────────────────────────────
 
+
 @app.command()
 def logs(
-    project: Optional[str] = typer.Argument(None, help="Project name (default: current directory)."),
+    project: str | None = typer.Argument(None, help="Project name (default: current directory)."),
     follow: bool = typer.Option(False, "--follow", "-f", help="Stream log output continuously."),
     lines: int = typer.Option(50, "--lines", "-n", help="Number of recent lines to show."),
 ) -> None:
@@ -782,14 +817,11 @@ def logs(
 
         if not log_file.exists():
             err_console.print(
-                f"[yellow]No log file found for '[bold]{name}[/bold]'.[/yellow]\n"
-                f"Expected: [dim]{log_file}[/dim]"
+                f"[yellow]No log file found for '[bold]{name}[/bold]'.[/yellow]\n" f"Expected: [dim]{log_file}[/dim]"
             )
             raise typer.Exit(1)
 
-        console.print(
-            f"[dim]Logs for [bold]{name}[/bold] — {log_file}[/dim]"
-        )
+        console.print(f"[dim]Logs for [bold]{name}[/bold] — {log_file}[/dim]")
         console.rule(style="dim")
 
         if follow:
@@ -822,6 +854,7 @@ def logs(
 
 # ── dashboard ──────────────────────────────────────────────────────────────────
 
+
 @app.command()
 def dashboard() -> None:
     """Open the HomeHost dashboard in your browser, starting it if needed."""
@@ -837,10 +870,12 @@ def dashboard() -> None:
         if not pm.is_running("homehost-dashboard"):
             with console.status("[blue]Starting dashboard…[/blue]"):
                 try:
-                    from homehost.dashboard import app as dashboard_app  # type: ignore
                     dashboard_cmd = [
-                        sys.executable, "-m", "homehost.dashboard",
-                        "--port", str(port),
+                        sys.executable,
+                        "-m",
+                        "homehost.dashboard",
+                        "--port",
+                        str(port),
                     ]
                     log_file = _log_dir() / "dashboard.log"
                     pm.start(
@@ -866,9 +901,10 @@ def dashboard() -> None:
 
 # ── tunnel ─────────────────────────────────────────────────────────────────────
 
+
 @app.command()
 def tunnel(
-    project: Optional[str] = typer.Argument(None, help="Project name (default: current directory)."),
+    project: str | None = typer.Argument(None, help="Project name (default: current directory)."),
     stop_: bool = typer.Option(False, "--stop", help="Stop the tunnel instead of starting it."),
 ) -> None:
     """Start or stop a public tunnel for a project via cloudflared."""
@@ -879,9 +915,7 @@ def tunnel(
         name = _resolve_project_name(project)
 
         if not _project_exists(name):
-            err_console.print(
-                f"[yellow]Project '[bold]{name}[/bold]' is not registered.[/yellow]"
-            )
+            err_console.print(f"[yellow]Project '[bold]{name}[/bold]' is not registered.[/yellow]")
             raise typer.Exit(1)
 
         cfg = load_project_config(name)
@@ -943,16 +977,19 @@ def tunnel(
 
 # ── config ─────────────────────────────────────────────────────────────────────
 
+
 @app.command()
 def config(
-    project: Optional[str] = typer.Argument(None, help="Project name (omit for global config)."),
+    project: str | None = typer.Argument(None, help="Project name (omit for global config)."),
     edit: bool = typer.Option(False, "--edit", "-e", help="Open config file in $EDITOR."),
 ) -> None:
     """View or edit global or project config."""
     try:
         from homehost.core.config import (
-            global_config_path, project_config_path,
-            load_global_config, load_project_config,
+            global_config_path,
+            load_global_config,
+            load_project_config,
+            project_config_path,
         )
 
         if project:
@@ -1004,7 +1041,7 @@ def config(
             console.print(f"[blue]Opening config in {editor}…[/blue]")
             subprocess.run([editor, str(config_file)])
         else:
-            body = "\n".join(f"  {l}" for l in lines)
+            body = "\n".join(f"  {line}" for line in lines)
             body += f"\n\n[dim]File: {config_file}[/dim]"
             body += "\n[dim]Use --edit to open in $EDITOR[/dim]"
             console.print(Panel(body, title=f"[blue]{title}[/blue]", border_style="blue"))
@@ -1017,6 +1054,7 @@ def config(
 
 # ── uninstall ──────────────────────────────────────────────────────────────────
 
+
 @app.command()
 def uninstall(
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt."),
@@ -1027,9 +1065,7 @@ def uninstall(
         items = []
 
         if homehost_dir.exists():
-            size_mb = sum(
-                f.stat().st_size for f in homehost_dir.rglob("*") if f.is_file()
-            ) / (1024 * 1024)
+            size_mb = sum(f.stat().st_size for f in homehost_dir.rglob("*") if f.is_file()) / (1024 * 1024)
             items.append(f"  [bold]Config & data:[/bold] {homehost_dir}  [dim]({size_mb:.1f} MB)[/dim]")
 
         if not items:
@@ -1080,11 +1116,12 @@ def uninstall(
 
 # ── doctor ─────────────────────────────────────────────────────────────────────
 
+
 @app.command()
 def doctor() -> None:
     """Run system diagnostics and report any issues."""
     try:
-        from homehost.core.detector import run_all_checks, detect_system
+        from homehost.core.detector import detect_system, run_all_checks
 
         console.print(Panel("[bold]HomeHost Doctor[/bold] — System Diagnostics", style="blue"))
 
@@ -1111,9 +1148,7 @@ def doctor() -> None:
         issues = 0
         for check in checks:
             icon = status_icons.get(check.status, "?")
-            color = {"ok": "green", "warning": "yellow", "error": "red", "missing": "dim"}.get(
-                check.status, "white"
-            )
+            color = {"ok": "green", "warning": "yellow", "error": "red", "missing": "dim"}.get(check.status, "white")
             console.print(f"  {icon}  [{color}]{check.name}[/{color}]: {check.message}")
             if check.fix_hint and check.status in ("warning", "error", "missing"):
                 console.print(f"     [dim]→ {check.fix_hint}[/dim]")
@@ -1124,8 +1159,7 @@ def doctor() -> None:
             console.print("\n  [green]All checks passed.[/green] HomeHost is ready to go!\n")
         else:
             console.print(
-                f"\n  [yellow]{issues} issue(s) found.[/yellow] "
-                "Address the hints above for the best experience.\n"
+                f"\n  [yellow]{issues} issue(s) found.[/yellow] " "Address the hints above for the best experience.\n"
             )
 
         # Available ports summary
@@ -1143,17 +1177,20 @@ def doctor() -> None:
 
 # ── update ─────────────────────────────────────────────────────────────────────
 
+
 @app.command()
 def update() -> None:
     """Check for and install updates to HomeHost."""
     try:
         from homehost import __version__
 
-        console.print(Panel(
-            f"[bold]Current version:[/bold] {__version__}\n\nChecking PyPI for updates…",
-            title="[blue]homehost update[/blue]",
-            border_style="blue",
-        ))
+        console.print(
+            Panel(
+                f"[bold]Current version:[/bold] {__version__}\n\nChecking PyPI for updates…",
+                title="[blue]homehost update[/blue]",
+                border_style="blue",
+            )
+        )
 
         with console.status("[blue]Fetching latest version from PyPI…[/blue]"):
             result = subprocess.run(
@@ -1168,10 +1205,8 @@ def update() -> None:
             # Parse output: "homehost (0.2.0)"
             for line in result.stdout.splitlines():
                 if "homehost" in line.lower() and "(" in line:
-                    try:
+                    with contextlib.suppress(IndexError):
                         latest = line.split("(")[1].split(")")[0].strip().split(",")[0].strip()
-                    except IndexError:
-                        pass
                     break
 
         if latest is None:
@@ -1197,8 +1232,7 @@ def update() -> None:
         if upgrade_result.returncode == 0:
             console.print(
                 Panel(
-                    "[green]Update complete![/green]\n\n"
-                    "Restart homehost to use the new version.",
+                    "[green]Update complete![/green]\n\n" "Restart homehost to use the new version.",
                     title="[green]Updated[/green]",
                     border_style="green",
                 )
@@ -1226,6 +1260,7 @@ def update() -> None:
 
 # ── setup ─────────────────────────────────────────────────────────────────────
 
+
 @app.command()
 def setup() -> None:
     """Check your system and install any missing dependencies (Caddy, cloudflared).
@@ -1237,12 +1272,12 @@ def setup() -> None:
 
 # ── new ────────────────────────────────────────────────────────────────────────
 
+
 @app.command()
 def new(
     template: str = typer.Argument(..., help="Template type: static, flask, fastapi, nextjs, react."),
     project_name: str = typer.Argument(..., help="Name for the new project (also used as directory name)."),
-    output_dir: Optional[Path] = typer.Option(None, "--dir", "-d",
-                                               help="Parent directory (default: current directory)."),
+    output_dir: Path | None = typer.Option(None, "--dir", "-d", help="Parent directory (default: current directory)."),
 ) -> None:
     """Scaffold a new project from a starter template.
 
@@ -1253,14 +1288,13 @@ def new(
       homehost new fastapi my-backend
     """
     try:
-        from homehost.deploy.scaffold import scaffold_project, TemplateType
+        from homehost.deploy.scaffold import TemplateType, scaffold_project
 
         try:
             tmpl = TemplateType(template.lower())
         except ValueError:
             err_console.print(
-                f"[red]Unknown template '{template}'.[/red] "
-                "Available: static, flask, fastapi, nextjs, react"
+                f"[red]Unknown template '{template}'.[/red] " "Available: static, flask, fastapi, nextjs, react"
             )
             raise typer.Exit(1)
 
@@ -1269,8 +1303,7 @@ def new(
 
         if target.exists():
             err_console.print(
-                f"[red]Directory '{target}' already exists.[/red] "
-                "Choose a different name or delete it first."
+                f"[red]Directory '{target}' already exists.[/red] " "Choose a different name or delete it first."
             )
             raise typer.Exit(1)
 

@@ -2,30 +2,32 @@
 
 from __future__ import annotations
 
-import time
 import webbrowser
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from textual import work
-from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Container, Horizontal, ScrollableContainer, Vertical
+from textual.containers import Horizontal, ScrollableContainer, Vertical
 from textual.screen import Screen
-from textual.widgets import Button, Footer, Header, Label, Static
+from textual.widgets import Footer, Header, Label
+
+if TYPE_CHECKING:
+    from textual.app import ComposeResult
 
 
 class StatusScreen(Screen):
     """Persistent live status view — updates every 3 seconds."""
 
     BINDINGS = [
-        Binding("s", "start_project",   "Start"),
-        Binding("p", "stop_project",    "Stop"),
+        Binding("s", "start_project", "Start"),
+        Binding("p", "stop_project", "Stop"),
         Binding("r", "restart_project", "Restart"),
-        Binding("l", "view_logs",       "Logs"),
-        Binding("d", "open_dashboard",  "Dashboard"),
-        Binding("n", "new_project",     "New Project"),
-        Binding("escape", "go_back",    "Back"),
-        Binding("q", "app.quit",        "Quit"),
+        Binding("l", "view_logs", "Logs"),
+        Binding("d", "open_dashboard", "Dashboard"),
+        Binding("n", "new_project", "New Project"),
+        Binding("escape", "go_back", "Back"),
+        Binding("q", "app.quit", "Quit"),
     ]
 
     DEFAULT_CSS = """
@@ -100,6 +102,7 @@ class StatusScreen(Screen):
         """Reload project configs and rebuild cards."""
         try:
             from homehost.core.config import list_projects, load_project_config
+
             names = list_projects()
         except Exception:
             names = []
@@ -151,19 +154,19 @@ class StatusScreen(Screen):
         with Vertical(id="empty-state") as v:
             container.mount(v)
             v.mount(Label("No projects yet.", id="empty-title"))
-            v.mount(Label(
-                "Press N to set up a new project, or run `homehost new` from the terminal.",
-                id="empty-hint",
-            ))
+            v.mount(
+                Label(
+                    "Press N to set up a new project, or run `homehost new` from the terminal.",
+                    id="empty-hint",
+                )
+            )
 
     def _update_header_stats(self, total: int, running: int) -> None:
         try:
             lbl = self.query_one("#header-stats", Label)
             stopped = total - running
             lbl.update(
-                f"  {total} project(s)  •  "
-                f"[#4ade80]{running} running[/]  •  "
-                f"[#94a3b8]{stopped} stopped[/]"
+                f"  {total} project(s)  •  " f"[#4ade80]{running} running[/]  •  " f"[#94a3b8]{stopped} stopped[/]"
             )
         except Exception:
             pass
@@ -171,7 +174,8 @@ class StatusScreen(Screen):
     def _get_process_status(self, name: str) -> str:
         try:
             from homehost.core.config import homehost_dir
-            from homehost.core.process import ProcessManager, ProcessState
+            from homehost.core.process import ProcessManager
+
             run_dir = homehost_dir() / "run"
             pm = ProcessManager(run_dir)
             state = pm.status(name)
@@ -188,6 +192,7 @@ class StatusScreen(Screen):
             cards = self.query("ServerCard")
             if cards:
                 from homehost.tui.widgets.server_card import ServerCard
+
                 first = cards.first(ServerCard)
                 return first.project_name
         except Exception:
@@ -224,6 +229,7 @@ class StatusScreen(Screen):
             return
         try:
             from homehost.tui.screens.manage import LogScreen
+
             self.app.push_screen(LogScreen(project_name=name))
         except Exception as exc:
             self.app.notify(f"Cannot open logs: {exc}", severity="error")
@@ -235,6 +241,7 @@ class StatusScreen(Screen):
     def action_new_project(self) -> None:
         try:
             from homehost.tui.screens.setup import SetupScreen
+
             self.app.push_screen(SetupScreen())
         except Exception as exc:
             self.app.notify(f"Cannot open setup: {exc}", severity="error")
@@ -249,6 +256,7 @@ class StatusScreen(Screen):
         try:
             from homehost.core.config import homehost_dir, load_project_config
             from homehost.core.process import ProcessManager
+
             cfg = load_project_config(name)
             run_dir = homehost_dir() / "run"
             pm = ProcessManager(run_dir)
@@ -267,6 +275,7 @@ class StatusScreen(Screen):
         try:
             from homehost.core.config import homehost_dir
             from homehost.core.process import ProcessManager
+
             run_dir = homehost_dir() / "run"
             pm = ProcessManager(run_dir)
             pm.stop(name)
@@ -280,6 +289,7 @@ class StatusScreen(Screen):
         try:
             from homehost.core.config import homehost_dir
             from homehost.core.process import ProcessManager
+
             run_dir = homehost_dir() / "run"
             pm = ProcessManager(run_dir)
             pm.restart(name)

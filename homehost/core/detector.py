@@ -7,7 +7,7 @@ import shutil
 import socket
 import subprocess
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 import structlog
@@ -19,18 +19,18 @@ log = structlog.get_logger(__name__)
 
 @dataclass
 class SystemInfo:
-    os_name: str                    # "macOS" | "Windows" | "Linux"
-    os_version: str                 # e.g. "15.1"
-    arch: str                       # "arm64" | "x86_64"
+    os_name: str  # "macOS" | "Windows" | "Linux"
+    os_version: str  # e.g. "15.1"
+    arch: str  # "arm64" | "x86_64"
     python_version: str
-    node_version: str               # "" if not found
-    git_version: str                # "" if not found
-    caddy_path: str                 # "" if not found
-    cloudflared_path: str           # "" if not found
-    homebrew_available: bool        # macOS only
-    winget_available: bool          # Windows only
-    choco_available: bool           # Windows only
-    available_ports: list[int]      # ports free in 8080-8099
+    node_version: str  # "" if not found
+    git_version: str  # "" if not found
+    caddy_path: str  # "" if not found
+    cloudflared_path: str  # "" if not found
+    homebrew_available: bool  # macOS only
+    winget_available: bool  # Windows only
+    choco_available: bool  # Windows only
+    available_ports: list[int]  # ports free in 8080-8099
     local_ip: str
     has_internet: bool
     disk_free_gb: float
@@ -39,9 +39,9 @@ class SystemInfo:
 @dataclass
 class CheckResult:
     name: str
-    status: str          # "ok" | "warning" | "error" | "missing"
+    status: str  # "ok" | "warning" | "error" | "missing"
     message: str
-    fix_hint: str = ""   # actionable hint shown to user on non-ok status
+    fix_hint: str = ""  # actionable hint shown to user on non-ok status
 
 
 # ── Internal helpers ───────────────────────────────────────────────────────────
@@ -172,7 +172,7 @@ def _choco_available() -> bool:
 def _disk_free_gb() -> float:
     try:
         usage = shutil.disk_usage(Path.home())
-        return usage.free / (1024 ** 3)
+        return usage.free / (1024**3)
     except Exception:  # noqa: BLE001
         return 0.0
 
@@ -183,9 +183,7 @@ def _disk_free_gb() -> float:
 def detect_system() -> SystemInfo:
     """Gather comprehensive system information. Never raises."""
     log.debug("detecting system info")
-    available_ports = [
-        p for p in range(8080, 8100) if not is_port_in_use(p)
-    ]
+    available_ports = [p for p in range(8080, 8100) if not is_port_in_use(p)]
     return SystemInfo(
         os_name=_os_name(),
         os_version=_os_version(),
@@ -255,8 +253,7 @@ def check_git() -> CheckResult:
         status="missing",
         message="git not found",
         fix_hint=(
-            "Install git from https://git-scm.com  "
-            "(macOS: `brew install git`  Windows: `winget install Git.Git`)"
+            "Install git from https://git-scm.com  " "(macOS: `brew install git`  Windows: `winget install Git.Git`)"
         ),
     )
 

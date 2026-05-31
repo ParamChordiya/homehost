@@ -84,10 +84,7 @@ class DashboardServer:
     def is_running(self) -> bool:
         """Return True if the server thread is alive and the server is started."""
         return (
-            self._thread is not None
-            and self._thread.is_alive()
-            and self._server is not None
-            and self._server.started
+            self._thread is not None and self._thread.is_alive() and self._server is not None and self._server.started
         )
 
     @property
@@ -150,6 +147,7 @@ def start_dashboard_in_background(port: int = 9111, host: str = "127.0.0.1") -> 
         loop.create_task(server.start())
         # Give the thread a moment to spin up.
         import time
+
         time.sleep(0.5)
     else:
         asyncio.run(server.start())

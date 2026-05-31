@@ -14,7 +14,6 @@ from homehost.core.project import (
     validate_project_directory,
 )
 
-
 # ── helpers ────────────────────────────────────────────────────────────────────
 
 
@@ -221,6 +220,7 @@ class TestValidateProjectDirectory:
     def test_permission_denied_returns_false(self, temp_dir):
         """Simulate unreadable directory (Unix only — skipped on Windows)."""
         import platform
+
         if platform.system() == "Windows":
             pytest.skip("chmod not reliable on Windows")
 

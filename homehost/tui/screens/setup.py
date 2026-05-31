@@ -3,19 +3,16 @@
 from __future__ import annotations
 
 import asyncio
-import socket
+import contextlib
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING
 
 from textual import work
-from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Container, Horizontal, Vertical, ScrollableContainer
+from textual.containers import Horizontal, ScrollableContainer, Vertical
 from textual.screen import Screen
 from textual.widgets import (
     Button,
-    Footer,
-    Header,
     Input,
     Label,
     LoadingIndicator,
@@ -24,15 +21,17 @@ from textual.widgets import (
     Static,
 )
 
+if TYPE_CHECKING:
+    from textual.app import ComposeResult
 
 # ── Step constants ────────────────────────────────────────────────────────────
 
-STEP_TYPE     = 0
-STEP_PATH     = 1
-STEP_ACCESS   = 2
-STEP_URL      = 3
+STEP_TYPE = 0
+STEP_PATH = 1
+STEP_ACCESS = 2
+STEP_URL = 3
 STEP_PROGRESS = 4
-STEP_DONE     = 5
+STEP_DONE = 5
 
 STEP_NAMES = [
     "Project Type",
@@ -44,23 +43,23 @@ STEP_NAMES = [
 ]
 
 PROJECT_TYPES = [
-    ("static",    "🌐 Static HTML / CSS / JS"),
-    ("nextjs",    "⚛️  React / Next.js"),
-    ("flask",     "🐍 Python · Flask"),
-    ("fastapi",   "🐍 Python · FastAPI"),
-    ("django",    "🐍 Python · Django"),
-    ("auto",      "🔍 Auto-detect"),
+    ("static", "🌐 Static HTML / CSS / JS"),
+    ("nextjs", "⚛️  React / Next.js"),
+    ("flask", "🐍 Python · Flask"),
+    ("fastapi", "🐍 Python · FastAPI"),
+    ("django", "🐍 Python · Django"),
+    ("auto", "🔍 Auto-detect"),
 ]
 
 ACCESS_MODES = [
-    ("local",  "🏠 Local only  (LAN / same network)"),
+    ("local", "🏠 Local only  (LAN / same network)"),
     ("public", "🌍 Public internet  (via Cloudflare Tunnel)"),
 ]
 
 URL_TYPES = [
-    ("quick",    "⚡ Random URL  (instant, e.g. abc123.trycloudflare.com)"),
-    ("subdomain","📌 Custom subdomain  (requires Cloudflare account)"),
-    ("domain",   "🔗 Own domain  (point your DNS to HomeHost)"),
+    ("quick", "⚡ Random URL  (instant, e.g. abc123.trycloudflare.com)"),
+    ("subdomain", "📌 Custom subdomain  (requires Cloudflare account)"),
+    ("domain", "🔗 Own domain  (point your DNS to HomeHost)"),
 ]
 
 
@@ -278,9 +277,9 @@ class SetupScreen(Screen):
             yield Vertical(id="step-content")
 
         with Horizontal(id="nav-bar"):
-            yield Button("← Back",   id="btn-back",   classes="-warning")
-            yield Button("Cancel",   id="btn-cancel",  classes="-error")
-            yield Button("Next →",   id="btn-next",    classes="-primary")
+            yield Button("← Back", id="btn-back", classes="-warning")
+            yield Button("Cancel", id="btn-cancel", classes="-error")
+            yield Button("Next →", id="btn-next", classes="-primary")
 
     def on_mount(self) -> None:
         self._render_step()
@@ -294,9 +293,15 @@ class SetupScreen(Screen):
         # Update nav buttons
         back_btn = self.query_one("#btn-back", Button)
         next_btn = self.query_one("#btn-next", Button)
-        back_btn.disabled = (step == 0 or step >= STEP_PROGRESS)
-        next_btn.label = "Finish" if step == STEP_DONE else ("Start Setup" if step == STEP_URL or (step == STEP_ACCESS and self.access_mode == "local") else "Next →")
-        next_btn.disabled = (step == STEP_PROGRESS)
+        back_btn.disabled = step == 0 or step >= STEP_PROGRESS
+        next_btn.label = (
+            "Finish"
+            if step == STEP_DONE
+            else (
+                "Start Setup" if step == STEP_URL or (step == STEP_ACCESS and self.access_mode == "local") else "Next →"
+            )
+        )
+        next_btn.disabled = step == STEP_PROGRESS
 
         container = self.query_one("#step-content", Vertical)
         container.remove_children()
@@ -316,10 +321,12 @@ class SetupScreen(Screen):
 
     def _render_type_step(self, container: Vertical) -> None:
         container.mount(Label("Select Project Type", id="step-title"))
-        container.mount(Label(
-            "Choose the framework your project uses, or let HomeHost auto-detect it.",
-            id="step-desc",
-        ))
+        container.mount(
+            Label(
+                "Choose the framework your project uses, or let HomeHost auto-detect it.",
+                id="step-desc",
+            )
+        )
         for value, label in PROJECT_TYPES:
             btn = ChoiceButton(label, id=f"type-{value}")
             if value == self.project_type:
@@ -329,11 +336,12 @@ class SetupScreen(Screen):
 
     def _render_path_step(self, container: Vertical) -> None:
         container.mount(Label("Project Directory", id="step-title"))
-        container.mount(Label(
-            "Enter the absolute path to your project folder.\n"
-            "Example: /Users/you/projects/my-website",
-            id="step-desc",
-        ))
+        container.mount(
+            Label(
+                "Enter the absolute path to your project folder.\n" "Example: /Users/you/projects/my-website",
+                id="step-desc",
+            )
+        )
         inp = Input(
             placeholder="/path/to/your/project",
             id="path-input",
@@ -347,11 +355,13 @@ class SetupScreen(Screen):
 
     def _render_access_step(self, container: Vertical) -> None:
         container.mount(Label("Access Mode", id="step-title"))
-        container.mount(Label(
-            "Choose who can access your project.\n"
-            "Local: only devices on your network.  Public: anyone on the internet.",
-            id="step-desc",
-        ))
+        container.mount(
+            Label(
+                "Choose who can access your project.\n"
+                "Local: only devices on your network.  Public: anyone on the internet.",
+                id="step-desc",
+            )
+        )
         for value, label in ACCESS_MODES:
             btn = ChoiceButton(label, id=f"access-{value}")
             if value == self.access_mode:
@@ -361,11 +371,13 @@ class SetupScreen(Screen):
 
     def _render_url_step(self, container: Vertical) -> None:
         container.mount(Label("Public URL Type", id="step-title"))
-        container.mount(Label(
-            "How would you like your project to be accessible on the internet?\n"
-            "You'll need cloudflared installed for all options.",
-            id="step-desc",
-        ))
+        container.mount(
+            Label(
+                "How would you like your project to be accessible on the internet?\n"
+                "You'll need cloudflared installed for all options.",
+                id="step-desc",
+            )
+        )
         for value, label in URL_TYPES:
             btn = ChoiceButton(label, id=f"url-{value}")
             if value == self.url_type:
@@ -375,27 +387,33 @@ class SetupScreen(Screen):
         # Extra input for subdomain / domain
         if self.url_type == "subdomain":
             container.mount(Label("Subdomain name (e.g. mysite):", classes="label-dim"))
-            container.mount(Input(
-                placeholder="mysite",
-                id="subdomain-input",
-                value=self.custom_subdomain,
-            ))
+            container.mount(
+                Input(
+                    placeholder="mysite",
+                    id="subdomain-input",
+                    value=self.custom_subdomain,
+                )
+            )
         elif self.url_type == "domain":
             container.mount(Label("Your domain (e.g. mysite.com):", classes="label-dim"))
-            container.mount(Input(
-                placeholder="mysite.com",
-                id="domain-input",
-                value=self.custom_domain,
-            ))
+            container.mount(
+                Input(
+                    placeholder="mysite.com",
+                    id="domain-input",
+                    value=self.custom_domain,
+                )
+            )
 
         container.mount(Label("", id="validation-msg"))
 
     def _render_progress_step(self, container: Vertical) -> None:
         container.mount(Label("Setting Up Your Project", id="step-title"))
-        container.mount(Label(
-            "HomeHost is configuring your server. This may take a moment…",
-            id="step-desc",
-        ))
+        container.mount(
+            Label(
+                "HomeHost is configuring your server. This may take a moment…",
+                id="step-desc",
+            )
+        )
         container.mount(ProgressBar(total=100, id="setup-progress", show_eta=False))
         log = RichLog(id="progress-log", wrap=True, highlight=True, markup=True)
         container.mount(log)
@@ -417,10 +435,12 @@ class SetupScreen(Screen):
                 box.mount(Label(f"🌍  Public URL:  {self._public_url}", classes="label-accent"))
 
             box.mount(Label("", classes="label-dim"))
-            box.mount(Label(
-                "Press D to open the dashboard, or N to add another project.",
-                classes="label-dim",
-            ))
+            box.mount(
+                Label(
+                    "Press D to open the dashboard, or N to add another project.",
+                    classes="label-dim",
+                )
+            )
 
     # ── Validation helpers ────────────────────────────────────────────────────
 
@@ -459,10 +479,8 @@ class SetupScreen(Screen):
 
         elif step == STEP_PATH:
             raw = ""
-            try:
+            with contextlib.suppress(Exception):
                 raw = self.query_one("#path-input", Input).value
-            except Exception:
-                pass
             self.project_path = raw.strip()
             if not self._validate_path_inline(self.project_path):
                 return
@@ -472,18 +490,14 @@ class SetupScreen(Screen):
 
         elif step == STEP_URL:
             if self.url_type == "subdomain":
-                try:
+                with contextlib.suppress(Exception):
                     self.custom_subdomain = self.query_one("#subdomain-input", Input).value.strip()
-                except Exception:
-                    pass
                 if not self.custom_subdomain:
                     self._set_validation("Please enter a subdomain name.", ok=False)
                     return
             elif self.url_type == "domain":
-                try:
+                with contextlib.suppress(Exception):
                     self.custom_domain = self.query_one("#domain-input", Input).value.strip()
-                except Exception:
-                    pass
                 if not self.custom_domain:
                     self._set_validation("Please enter your domain name.", ok=False)
                     return
@@ -600,6 +614,7 @@ class SetupScreen(Screen):
         try:
             if self.project_type == "auto":
                 from homehost.core.project import detect_project_type
+
                 result = detect_project_type(project_path)
                 actual_type = result.project_type.value
                 self._log(f"   Detected: [#4ade80]{actual_type}[/] ({result.reason})")
@@ -615,6 +630,7 @@ class SetupScreen(Screen):
         self._log("🔌 Finding available port…")
         try:
             from homehost.core.detector import find_available_port
+
             port = find_available_port(8080, 8099)
             if port is None:
                 port = 8080
@@ -632,7 +648,11 @@ class SetupScreen(Screen):
         self._log("💾 Saving project configuration…")
         project_name = project_path.name
         try:
-            from homehost.core.config import ProjectConfig, ProjectNetworkConfig, ProjectServerConfig, save_project_config
+            from homehost.core.config import (
+                ProjectConfig,
+                save_project_config,
+            )
+
             cfg = ProjectConfig(
                 name=project_name,
                 type=actual_type,

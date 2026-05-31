@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import logging
 import sys
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 from rich.console import Console
 from rich.logging import RichHandler
-from rich.text import Text
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _console = Console(stderr=True)
 _out_console = Console()

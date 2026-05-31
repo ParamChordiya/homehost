@@ -10,7 +10,6 @@ import re
 import socket
 import subprocess
 import threading
-from typing import Optional
 
 import qrcode
 import qrcode.constants
@@ -51,18 +50,18 @@ def get_local_ip() -> str:
     system = platform.system()
     try:
         if system in ("Darwin", "Linux"):
-            output = subprocess.check_output(
-                ["ifconfig"], stderr=subprocess.DEVNULL, timeout=5
-            ).decode(errors="replace")
+            output = subprocess.check_output(["ifconfig"], stderr=subprocess.DEVNULL, timeout=5).decode(
+                errors="replace"
+            )
             # Match "inet <addr>" lines, skip loopback
             for match in re.finditer(r"inet\s+([\d.]+)", output):
                 addr = match.group(1)
                 if addr != "127.0.0.1" and is_private_ip(addr):
                     return addr
         elif system == "Windows":
-            output = subprocess.check_output(
-                ["ipconfig"], stderr=subprocess.DEVNULL, timeout=5
-            ).decode(errors="replace")
+            output = subprocess.check_output(["ipconfig"], stderr=subprocess.DEVNULL, timeout=5).decode(
+                errors="replace"
+            )
             for match in re.finditer(r"IPv4 Address[.\s]+:\s*([\d.]+)", output):
                 addr = match.group(1)
                 if addr != "127.0.0.1" and is_private_ip(addr):
@@ -100,9 +99,9 @@ def get_all_local_ips() -> list[str]:
         import fcntl
         import struct
 
-        SIOCGIFADDR = 0x8915  # Linux
+        _siocgifaddr = 0x8915  # Linux
         if platform.system() == "Darwin":
-            SIOCGIFADDR = 0xC0206921  # macOS — use ifconfig fallback instead
+            _siocgifaddr = 0xC0206921  # macOS — use ifconfig fallback instead
 
         if platform.system() == "Linux":
             with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
@@ -110,7 +109,7 @@ def get_all_local_ips() -> list[str]:
                     iface_name = iface[1].encode()
                     try:
                         packed = struct.pack("256s", iface_name[:15])
-                        res = fcntl.ioctl(sock.fileno(), SIOCGIFADDR, packed)
+                        res = fcntl.ioctl(sock.fileno(), _siocgifaddr, packed)
                         addr = socket.inet_ntoa(res[20:24])
                         if addr != "127.0.0.1" and addr not in ips:
                             ips.append(addr)
@@ -159,7 +158,7 @@ def print_qr_code(url: str) -> None:
     console.print(
         Panel(
             qr_str.rstrip(),
-            title=f"[bold cyan]Scan to open[/bold cyan]",
+            title="[bold cyan]Scan to open[/bold cyan]",
             subtitle=f"[dim]{url}[/dim]",
             border_style="cyan",
             expand=False,

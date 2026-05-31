@@ -6,8 +6,6 @@ import socket
 import time
 import urllib.error
 import urllib.request
-from typing import Optional
-
 
 # ---------------------------------------------------------------------------
 # Local IP detection
@@ -84,8 +82,7 @@ def find_free_port(start: int = 8080, end: int = 8099, host: str = "0.0.0.0") ->
         if not is_port_in_use(port, host=host):
             return port
     raise RuntimeError(
-        f"No free port found in range {start}–{end}. "
-        "Try freeing a port or expanding the search range."
+        f"No free port found in range {start}–{end}. " "Try freeing a port or expanding the search range."
     )
 
 
@@ -182,7 +179,7 @@ def check_port_externally_accessible(port: int) -> bool:
     parse failure to avoid false positives blocking normal operation.
     """
     try:
-        url = f"https://portchecker.co/api/v1/query"
+        url = "https://portchecker.co/api/v1/query"
         body = f'{{"host": "auto", "ports": [{port}]}}'.encode()
         req = urllib.request.Request(
             url,

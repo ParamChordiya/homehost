@@ -3,23 +3,26 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import shutil
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from textual import work
-from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from textual.widgets import Button, Footer, Label, ProgressBar, RichLog, Static
 
+if TYPE_CHECKING:
+    from textual.app import ComposeResult
 
 _REMOVAL_CHECKLIST = [
-    ("stop_processes",   "Stop all running projects"),
-    ("remove_configs",   "Remove ~/.homehost configuration directory"),
+    ("stop_processes", "Stop all running projects"),
+    ("remove_configs", "Remove ~/.homehost configuration directory"),
     ("remove_caddy_cfg", "Remove Caddy config snippets (if any)"),
-    ("remove_tunnels",   "Terminate active Cloudflare tunnels"),
-    ("remove_pip",       "Uninstall homehost Python package"),
+    ("remove_tunnels", "Terminate active Cloudflare tunnels"),
+    ("remove_pip", "Uninstall homehost Python package"),
 ]
 
 
@@ -28,7 +31,7 @@ class UninstallScreen(Screen):
 
     BINDINGS = [
         Binding("escape", "cancel", "Cancel"),
-        Binding("q",      "cancel", "Cancel"),
+        Binding("q", "cancel", "Cancel"),
     ]
 
     DEFAULT_CSS = """
@@ -150,29 +153,32 @@ class UninstallScreen(Screen):
         body.remove_children()
 
         body.mount(Label("🗑️  Uninstall HomeHost", id="uninstall-title"))
-        body.mount(Label(
-            "The following items will be removed from your system:",
-            id="uninstall-subtitle",
-        ))
+        body.mount(
+            Label(
+                "The following items will be removed from your system:",
+                id="uninstall-subtitle",
+            )
+        )
 
         with Vertical(id="checklist-container") as cl:
             body.mount(cl)
-            for key, desc in _REMOVAL_CHECKLIST:
+            for _key, desc in _REMOVAL_CHECKLIST:
                 with Horizontal(classes="checklist-item") as row:
                     cl.mount(row)
                     row.mount(Label("⚠️ ", classes="item-icon"))
                     row.mount(Label(desc))
 
-        body.mount(Label(
-            "⚠️  This action cannot be undone.\n"
-            "Your project source files will NOT be deleted.",
-            id="confirm-warning",
-        ))
+        body.mount(
+            Label(
+                "⚠️  This action cannot be undone.\n" "Your project source files will NOT be deleted.",
+                id="confirm-warning",
+            )
+        )
 
         with Horizontal(id="confirm-buttons") as btns:
             body.mount(btns)
             btns.mount(Button("🗑  Yes, Uninstall", id="btn-uninstall-go", classes="-error"))
-            btns.mount(Button("Cancel",             id="btn-uninstall-cancel"))
+            btns.mount(Button("Cancel", id="btn-uninstall-cancel"))
 
     def _render_progress(self) -> None:
         self._phase = "progress"
@@ -193,18 +199,21 @@ class UninstallScreen(Screen):
 
         if success:
             body.mount(Label("✅  HomeHost Uninstalled", id="done-title"))
-            body.mount(Label(
-                "HomeHost has been removed from your system.\n"
-                "Thank you for using HomeHost! Run `pip install homehost` to reinstall.",
-                id="done-msg",
-            ))
+            body.mount(
+                Label(
+                    "HomeHost has been removed from your system.\n"
+                    "Thank you for using HomeHost! Run `pip install homehost` to reinstall.",
+                    id="done-msg",
+                )
+            )
         else:
             body.mount(Label("⚠️  Uninstall Incomplete", id="uninstall-title"))
-            body.mount(Label(
-                "Some components could not be removed automatically.\n"
-                "Check the log above for details.",
-                id="done-msg",
-            ))
+            body.mount(
+                Label(
+                    "Some components could not be removed automatically.\n" "Check the log above for details.",
+                    id="done-msg",
+                )
+            )
 
         with Horizontal(id="done-buttons") as btns:
             body.mount(btns)
@@ -226,10 +235,8 @@ class UninstallScreen(Screen):
     # ── Uninstall worker ──────────────────────────────────────────────────────
 
     def _log(self, msg: str) -> None:
-        try:
+        with contextlib.suppress(Exception):
             self.query_one("#progress-log", RichLog).write(msg)
-        except Exception:
-            pass
 
     def _set_progress(self, pct: float) -> None:
         try:
@@ -249,6 +256,7 @@ class UninstallScreen(Screen):
         try:
             from homehost.core.config import homehost_dir
             from homehost.core.process import ProcessManager
+
             run_dir = homehost_dir() / "run"
             pm = ProcessManager(run_dir)
             pm.stop_all()
@@ -262,6 +270,7 @@ class UninstallScreen(Screen):
         self._log("[bold #4c9be8]Step 2/5 — Removing configuration directory…[/]")
         try:
             from homehost.core.config import homehost_dir
+
             hh_dir = homehost_dir()
             if hh_dir.exists():
                 shutil.rmtree(hh_dir)
@@ -295,9 +304,11 @@ class UninstallScreen(Screen):
         self._log("[bold #4c9be8]Step 4/5 — Terminating Cloudflare tunnels…[/]")
         try:
             import subprocess
+
             result = subprocess.run(
                 ["pkill", "-f", "cloudflared tunnel"],
-                capture_output=True, timeout=5,
+                capture_output=True,
+                timeout=5,
             )
             self._log("   [#4ade80]Tunnel processes terminated.[/]")
         except FileNotFoundError:
@@ -310,10 +321,14 @@ class UninstallScreen(Screen):
         # 5. Pip uninstall
         self._log("[bold #4c9be8]Step 5/5 — Uninstalling homehost package…[/]")
         try:
-            import subprocess, sys
+            import subprocess
+            import sys
+
             result = subprocess.run(
                 [sys.executable, "-m", "pip", "uninstall", "-y", "homehost"],
-                capture_output=True, text=True, timeout=30,
+                capture_output=True,
+                text=True,
+                timeout=30,
             )
             if result.returncode == 0:
                 self._log("   [#4ade80]Package uninstalled.[/]")

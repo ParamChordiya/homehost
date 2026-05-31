@@ -2,32 +2,33 @@
 
 from __future__ import annotations
 
-import time
 import webbrowser
+from typing import TYPE_CHECKING
 
-from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
 from textual.widget import Widget
-from textual.widgets import Button, Label, Static
+from textual.widgets import Button, Label
 
+if TYPE_CHECKING:
+    from textual.app import ComposeResult
 
 _TYPE_BADGES = {
-    "static":  ("[#94a3b8]HTML[/]",    "#94a3b8"),
-    "flask":   ("[#4c9be8]Flask[/]",   "#4c9be8"),
+    "static": ("[#94a3b8]HTML[/]", "#94a3b8"),
+    "flask": ("[#4c9be8]Flask[/]", "#4c9be8"),
     "fastapi": ("[#4ade80]FastAPI[/]", "#4ade80"),
-    "django":  ("[#4ade80]Django[/]",  "#4ade80"),
-    "nextjs":  ("[#fbbf24]Next.js[/]", "#fbbf24"),
-    "react":   ("[#4c9be8]React[/]",   "#4c9be8"),
-    "node":    ("[#4ade80]Node[/]",    "#4ade80"),
-    "docker":  ("[#4c9be8]Docker[/]",  "#4c9be8"),
-    "custom":  ("[#94a3b8]Custom[/]",  "#94a3b8"),
+    "django": ("[#4ade80]Django[/]", "#4ade80"),
+    "nextjs": ("[#fbbf24]Next.js[/]", "#fbbf24"),
+    "react": ("[#4c9be8]React[/]", "#4c9be8"),
+    "node": ("[#4ade80]Node[/]", "#4ade80"),
+    "docker": ("[#4c9be8]Docker[/]", "#4c9be8"),
+    "custom": ("[#94a3b8]Custom[/]", "#94a3b8"),
 }
 
 _STATUS_DOT = {
     "running": ("●", "#4ade80"),
     "stopped": ("○", "#94a3b8"),
-    "error":   ("✖", "#f87171"),
+    "error": ("✖", "#f87171"),
     "unknown": ("?", "#fbbf24"),
 }
 
@@ -171,7 +172,7 @@ class ServerCard(Widget):
 
         with Horizontal(id="card-header"):
             yield Label(self.project_name, id="card-name")
-            yield Label(badge_text,        id="card-badge")
+            yield Label(badge_text, id="card-badge")
             yield Label(
                 f"[{dot_color}]{dot}[/] [{dot_color}]{self.status}[/]",
                 id="card-status",
@@ -179,12 +180,12 @@ class ServerCard(Widget):
 
         with Vertical(id="card-urls"):
             with Horizontal(classes="url-row"):
-                yield Label("🏠 Local:",  classes="url-label")
+                yield Label("🏠 Local:", classes="url-label")
                 yield Label(self.local_url or "—", classes="url-value", id="local-url-lbl")
             if self.public_url:
                 with Horizontal(classes="url-row"):
                     yield Label("🌍 Public:", classes="url-label")
-                    yield Label(self.public_url,    classes="url-value", id="public-url-lbl")
+                    yield Label(self.public_url, classes="url-value", id="public-url-lbl")
 
         with Horizontal(id="card-stats"):
             if self.uptime_seconds > 0:
@@ -204,12 +205,12 @@ class ServerCard(Widget):
 
         with Horizontal(id="card-actions"):
             if self.status == "running":
-                yield Button("■ Stop",    id=f"card-stop-{self.project_name}",    classes="-warning")
+                yield Button("■ Stop", id=f"card-stop-{self.project_name}", classes="-warning")
                 yield Button("↺ Restart", id=f"card-restart-{self.project_name}")
             else:
-                yield Button("▶ Start",  id=f"card-start-{self.project_name}",   classes="-success")
-            yield Button("📋 Logs",  id=f"card-logs-{self.project_name}")
-            yield Button("🌐 Open",  id=f"card-open-{self.project_name}")
+                yield Button("▶ Start", id=f"card-start-{self.project_name}", classes="-success")
+            yield Button("📋 Logs", id=f"card-logs-{self.project_name}")
+            yield Button("🌐 Open", id=f"card-open-{self.project_name}")
 
     # ── Reactive watchers — rebuild relevant parts ─────────────────────────────
 
@@ -257,15 +258,19 @@ class ServerCard(Widget):
 
     def _action_start(self) -> None:
         try:
+            from pathlib import Path
+
             from homehost.core.config import homehost_dir, load_project_config
             from homehost.core.process import ProcessManager
-            from pathlib import Path
+
             cfg = load_project_config(self.project_name)
             run_dir = homehost_dir() / "run"
             pm = ProcessManager(run_dir)
-            cmd = cfg.server.start_command.split() if cfg.server.start_command else [
-                "python", "-m", "http.server", str(cfg.server.port)
-            ]
+            cmd = (
+                cfg.server.start_command.split()
+                if cfg.server.start_command
+                else ["python", "-m", "http.server", str(cfg.server.port)]
+            )
             pm.start(self.project_name, cmd, Path(cfg.path))
             self.status = "running"
             self.app.notify(f"Started: {self.project_name}")
@@ -276,6 +281,7 @@ class ServerCard(Widget):
         try:
             from homehost.core.config import homehost_dir
             from homehost.core.process import ProcessManager
+
             run_dir = homehost_dir() / "run"
             pm = ProcessManager(run_dir)
             pm.stop(self.project_name)
@@ -288,6 +294,7 @@ class ServerCard(Widget):
         try:
             from homehost.core.config import homehost_dir
             from homehost.core.process import ProcessManager
+
             run_dir = homehost_dir() / "run"
             pm = ProcessManager(run_dir)
             pm.restart(self.project_name)
@@ -298,6 +305,7 @@ class ServerCard(Widget):
     def _action_logs(self) -> None:
         try:
             from homehost.tui.screens.manage import LogScreen
+
             self.app.push_screen(LogScreen(project_name=self.project_name))
         except Exception as exc:
             self.app.notify(f"Cannot open logs: {exc}", severity="error")

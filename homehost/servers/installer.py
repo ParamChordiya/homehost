@@ -8,7 +8,6 @@ Install order (each binary):
 
 from __future__ import annotations
 
-import os
 import platform
 import shutil
 import stat
@@ -18,20 +17,20 @@ import tarfile
 import tempfile
 import urllib.request
 import zipfile
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import TYPE_CHECKING
 from urllib.error import URLError
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
 _HOMEHOST_BIN = Path.home() / ".homehost" / "bin"
 
 _CADDY_GITHUB_API = "https://api.github.com/repos/caddyserver/caddy/releases/latest"
-_CLOUDFLARED_GITHUB_API = (
-    "https://api.github.com/repos/cloudflare/cloudflared/releases/latest"
-)
+_CLOUDFLARED_GITHUB_API = "https://api.github.com/repos/cloudflare/cloudflared/releases/latest"
 
 
 # ── Result dataclass ───────────────────────────────────────────────────────────
@@ -40,10 +39,10 @@ _CLOUDFLARED_GITHUB_API = (
 @dataclass
 class InstallResult:
     success: bool
-    path: str = ""         # full path to installed binary
-    version: str = ""      # version string (e.g. "v2.8.4")
-    method: str = ""       # "brew" | "winget" | "choco" | "direct" | "existing"
-    error: str = ""        # "" if success
+    path: str = ""  # full path to installed binary
+    version: str = ""  # version string (e.g. "v2.8.4")
+    method: str = ""  # "brew" | "winget" | "choco" | "direct" | "existing"
+    error: str = ""  # "" if success
 
 
 # ── Platform helpers ───────────────────────────────────────────────────────────
@@ -151,6 +150,7 @@ def _fetch_latest_release_tag(api_url: str) -> str:
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
             import json
+
             data = json.loads(resp.read().decode())
             return data.get("tag_name", "")
     except (URLError, OSError, ValueError):
@@ -220,8 +220,15 @@ def _install_via_winget(
     if callback:
         callback(f"Installing {package_id} via winget…")
     rc, stdout, stderr = _run(
-        ["winget", "install", "--id", package_id, "--silent", "--accept-source-agreements",
-         "--accept-package-agreements"],
+        [
+            "winget",
+            "install",
+            "--id",
+            package_id,
+            "--silent",
+            "--accept-source-agreements",
+            "--accept-package-agreements",
+        ],
         timeout=300,
     )
     return (rc == 0, "" if rc == 0 else (stderr or stdout))
@@ -267,9 +274,7 @@ def _direct_install_caddy(callback: Callable[[str], None] | None) -> InstallResu
         if _is_macos():
             mac_arch = "arm64" if arch == "arm64" else "amd64"
             archive_name = f"caddy_{version}_mac_{mac_arch}.tar.gz"
-            url = (
-                f"https://github.com/caddyserver/caddy/releases/download/{tag}/{archive_name}"
-            )
+            url = f"https://github.com/caddyserver/caddy/releases/download/{tag}/{archive_name}"
             archive_path = tmp / archive_name
             try:
                 _download_with_progress(url, archive_path, callback)
@@ -288,9 +293,7 @@ def _direct_install_caddy(callback: Callable[[str], None] | None) -> InstallResu
 
         elif _is_windows():
             archive_name = f"caddy_{version}_windows_amd64.zip"
-            url = (
-                f"https://github.com/caddyserver/caddy/releases/download/{tag}/{archive_name}"
-            )
+            url = f"https://github.com/caddyserver/caddy/releases/download/{tag}/{archive_name}"
             archive_path = tmp / archive_name
             try:
                 _download_with_progress(url, archive_path, callback)
@@ -356,9 +359,7 @@ def _direct_install_cloudflared(callback: Callable[[str], None] | None) -> Insta
         if _is_macos():
             # e.g. cloudflared-darwin-arm64 or cloudflared-darwin-amd64
             filename = f"cloudflared-darwin-{arch}"
-            url = (
-                f"https://github.com/cloudflare/cloudflared/releases/download/{tag}/{filename}"
-            )
+            url = f"https://github.com/cloudflare/cloudflared/releases/download/{tag}/{filename}"
             dest = bin_dir / "cloudflared"
             tmp_bin = tmp / "cloudflared"
             try:
@@ -370,9 +371,7 @@ def _direct_install_cloudflared(callback: Callable[[str], None] | None) -> Insta
 
         elif _is_windows():
             filename = "cloudflared-windows-amd64.exe"
-            url = (
-                f"https://github.com/cloudflare/cloudflared/releases/download/{tag}/{filename}"
-            )
+            url = f"https://github.com/cloudflare/cloudflared/releases/download/{tag}/{filename}"
             dest = bin_dir / "cloudflared.exe"
             tmp_bin = tmp / "cloudflared.exe"
             try:

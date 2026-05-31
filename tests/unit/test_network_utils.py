@@ -19,7 +19,6 @@ from homehost.network.local import (
     is_private_ip,
 )
 
-
 # ── is_port_in_use ─────────────────────────────────────────────────────────────
 
 

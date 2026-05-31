@@ -2,23 +2,20 @@
 
 from __future__ import annotations
 
+import contextlib
 import fnmatch
 import threading
-import time
 from pathlib import Path
-from typing import Callable, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
 from watchdog.events import (
-    DirCreatedEvent,
-    DirDeletedEvent,
-    DirModifiedEvent,
-    FileCreatedEvent,
-    FileDeletedEvent,
-    FileModifiedEvent,
     FileSystemEvent,
     FileSystemEventHandler,
 )
 from watchdog.observers import Observer
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class ChangeEvent(NamedTuple):
@@ -140,10 +137,8 @@ class _DebouncedHandler(FileSystemEventHandler):
             self._timer = None
 
         if paths:
-            try:
+            with contextlib.suppress(Exception):
                 self._on_change(paths)
-            except Exception:
-                pass  # Never let a callback crash the watcher thread
 
 
 class ProjectWatcher:
@@ -167,9 +162,7 @@ class ProjectWatcher:
         self._project_path = project_path.resolve()
         self._on_change = on_change
         self._debounce_ms = debounce_ms
-        self._ignore_patterns: list[str] = list(
-            ignore_patterns if ignore_patterns is not None else _DEFAULT_IGNORE
-        )
+        self._ignore_patterns: list[str] = list(ignore_patterns if ignore_patterns is not None else _DEFAULT_IGNORE)
 
         self._handler = _DebouncedHandler(
             on_change=self._on_change,

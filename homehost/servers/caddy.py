@@ -6,15 +6,16 @@ the Caddy process (start / stop / reload / status).
 
 from __future__ import annotations
 
+import contextlib
 import logging
-import os
 import signal
 import subprocess
 import sys
-import textwrap
 import time
-from pathlib import Path
-from typing import IO
+from typing import IO, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +69,7 @@ class CaddyManager:
         lines: list[str] = [f"{site_addr} {{"]
 
         lines += [
-            f'    root * {serve_dir}',
+            f"    root * {serve_dir}",
             "    file_server",
             "",
         ]
@@ -86,7 +87,7 @@ class CaddyManager:
                 "    header {",
                 "        X-Content-Type-Options nosniff",
                 "        X-Frame-Options DENY",
-                "        Strict-Transport-Security \"max-age=31536000; includeSubDomains; preload\"",
+                '        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"',
                 "        Referrer-Policy strict-origin-when-cross-origin",
                 "        Content-Security-Policy \"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'\"",
                 "        -Server",
@@ -164,7 +165,7 @@ class CaddyManager:
                 "    header {",
                 "        X-Content-Type-Options nosniff",
                 "        X-Frame-Options DENY",
-                "        Strict-Transport-Security \"max-age=31536000; includeSubDomains; preload\"",
+                '        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"',
                 "        Referrer-Policy strict-origin-when-cross-origin",
                 "        -Server",
                 "    }",
@@ -212,7 +213,7 @@ class CaddyManager:
         for name in project_names:
             caddyfile_path = projects_base / name / "Caddyfile"
             if caddyfile_path.exists():
-                lines.append(f'import {caddyfile_path}')
+                lines.append(f"import {caddyfile_path}")
 
         content = "\n".join(lines) + "\n"
         self._master_caddyfile.write_text(content, encoding="utf-8")
@@ -242,13 +243,15 @@ class CaddyManager:
 
         caddy_log = self._data_dir / "caddy.log"
         try:
-            self._log_file = open(caddy_log, "ab")
+            self._log_file = open(caddy_log, "ab")  # noqa: SIM115
             self._process = subprocess.Popen(
                 [
                     self._caddy_path,
                     "run",
-                    "--config", str(self._master_caddyfile),
-                    "--adapter", "caddyfile",
+                    "--config",
+                    str(self._master_caddyfile),
+                    "--adapter",
+                    "caddyfile",
                 ],
                 stdout=self._log_file,
                 stderr=self._log_file,
@@ -294,10 +297,8 @@ class CaddyManager:
             return False
         finally:
             if self._log_file is not None:
-                try:
+                with contextlib.suppress(OSError):
                     self._log_file.close()
-                except OSError:
-                    pass
                 self._log_file = None
             self._process = None
 
@@ -327,8 +328,10 @@ class CaddyManager:
                 [
                     self._caddy_path,
                     "reload",
-                    "--config", str(self._master_caddyfile),
-                    "--adapter", "caddyfile",
+                    "--config",
+                    str(self._master_caddyfile),
+                    "--adapter",
+                    "caddyfile",
                 ],
                 capture_output=True,
                 timeout=15,
@@ -354,7 +357,7 @@ class CaddyManager:
 
         # Check for any caddy process via admin API
         try:
-            result = subprocess.run(
+            subprocess.run(
                 [self._caddy_path, "environ"],
                 capture_output=True,
                 timeout=3,
@@ -369,6 +372,7 @@ class CaddyManager:
     def _ping_admin_api(self) -> bool:
         """Ping the Caddy admin API (localhost:2019) to check if it's alive."""
         import socket
+
         try:
             with socket.create_connection(("127.0.0.1", 2019), timeout=1):
                 return True

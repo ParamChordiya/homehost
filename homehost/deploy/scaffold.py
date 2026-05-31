@@ -72,8 +72,7 @@ def scaffold_project(
     src = get_template_dir(template)
     if not src.exists():
         raise FileNotFoundError(
-            f"Template '{template.value}' not found at {src}. "
-            "Ensure the homehost package was installed correctly."
+            f"Template '{template.value}' not found at {src}. " "Ensure the homehost package was installed correctly."
         )
 
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -94,9 +93,7 @@ def scaffold_project(
         # Perform simple substitution of the placeholder project name
         try:
             text = src_file.read_text(encoding="utf-8")
-            text = text.replace("{{project_name}}", project_name).replace(
-                "{{ project_name }}", project_name
-            )
+            text = text.replace("{{project_name}}", project_name).replace("{{ project_name }}", project_name)
             dest_file.write_text(text, encoding="utf-8")
         except UnicodeDecodeError:
             # Binary file — copy verbatim

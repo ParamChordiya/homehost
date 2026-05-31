@@ -21,7 +21,6 @@ from homehost.core.config import (
     save_project_config,
 )
 
-
 # ── helpers ────────────────────────────────────────────────────────────────────
 
 
@@ -53,13 +52,13 @@ class TestLoadGlobalConfig:
         """A file with only one key should not break other defaults."""
         hh = tmp_path / ".homehost"
         hh.mkdir()
-        (hh / "config.toml").write_text('[general]\ndashboard_port = 7777\n')
+        (hh / "config.toml").write_text("[general]\ndashboard_port = 7777\n")
 
         with patch("homehost.core.config.homehost_dir", return_value=hh):
             cfg = load_global_config()
 
         assert cfg.general.dashboard_port == 7777
-        assert cfg.general.log_level == "info"   # default untouched
+        assert cfg.general.log_level == "info"  # default untouched
 
 
 class TestSaveAndLoadGlobalConfig:

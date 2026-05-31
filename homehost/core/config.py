@@ -17,8 +17,8 @@ else:
 
 import tomli_w
 
-
 # ── Paths ──────────────────────────────────────────────────────────────────────
+
 
 def homehost_dir() -> Path:
     """Return ~/.homehost, creating it if needed."""
@@ -45,6 +45,7 @@ def project_config_path(name: str) -> Path:
 
 
 # ── Dataclasses ────────────────────────────────────────────────────────────────
+
 
 @dataclass
 class GeneralConfig:
@@ -119,9 +120,7 @@ class ProjectSecurityConfig:
 @dataclass
 class ProjectWatcherConfig:
     enabled: bool = True
-    ignore: list[str] = field(
-        default_factory=lambda: [".git", "node_modules", "__pycache__", ".DS_Store"]
-    )
+    ignore: list[str] = field(default_factory=lambda: [".git", "node_modules", "__pycache__", ".DS_Store"])
 
 
 @dataclass
@@ -137,6 +136,7 @@ class ProjectConfig:
 
 
 # ── Read helpers ───────────────────────────────────────────────────────────────
+
 
 def _load_toml(path: Path) -> dict[str, Any]:
     if not path.exists():
@@ -160,6 +160,7 @@ def _atomic_write(path: Path, data: bytes) -> None:
 
 
 # ── GlobalConfig ───────────────────────────────────────────────────────────────
+
 
 def load_global_config() -> GlobalConfig:
     """Load global config from disk, merging with defaults."""
@@ -186,9 +187,7 @@ def load_global_config() -> GlobalConfig:
 
     sec = raw.get("security", {})
     cfg.security.rate_limit = sec.get("rate_limit", cfg.security.rate_limit)
-    cfg.security.enable_security_headers = sec.get(
-        "enable_security_headers", cfg.security.enable_security_headers
-    )
+    cfg.security.enable_security_headers = sec.get("enable_security_headers", cfg.security.enable_security_headers)
     cfg.security.block_dotfiles = sec.get("block_dotfiles", cfg.security.block_dotfiles)
 
     d = raw.get("dashboard", {})
@@ -232,6 +231,7 @@ def save_global_config(cfg: GlobalConfig) -> None:
 
 
 # ── ProjectConfig ──────────────────────────────────────────────────────────────
+
 
 def load_project_config(name: str) -> ProjectConfig:
     """Load a project's config from disk."""
@@ -310,6 +310,7 @@ def save_project_config(cfg: ProjectConfig) -> None:
 def delete_project_config(name: str) -> None:
     """Remove a project's config directory from ~/.homehost/projects/."""
     import shutil
+
     p = projects_dir() / name
     if p.exists():
         shutil.rmtree(p)

@@ -5,11 +5,10 @@ from __future__ import annotations
 import re
 import socket
 import stat
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-
 
 # ── Data model ─────────────────────────────────────────────────────────────────
 
@@ -55,26 +54,26 @@ _SEVERITY_ORDER: dict[str, int] = {
 
 # Ports that are expected to be open on a developer machine running HomeHost
 _EXPECTED_PORTS: set[int] = {
-    22,    # SSH
-    53,    # DNS
-    80,    # HTTP (Caddy)
-    443,   # HTTPS (Caddy)
+    22,  # SSH
+    53,  # DNS
+    80,  # HTTP (Caddy)
+    443,  # HTTPS (Caddy)
     8080,  # Default HomeHost project port
     9111,  # HomeHost dashboard
 }
 
 # Ports that are high-risk if open to the network
 _HIGH_RISK_PORTS: dict[int, str] = {
-    21:    "FTP — plaintext file transfer",
-    23:    "Telnet — plaintext remote access",
-    25:    "SMTP — mail relay (potential spam source)",
-    110:   "POP3 — plaintext mail",
-    143:   "IMAP — plaintext mail",
-    445:   "SMB — Windows file sharing (ransomware target)",
-    3306:  "MySQL — database exposed to network",
-    5432:  "PostgreSQL — database exposed to network",
-    5900:  "VNC — remote desktop",
-    6379:  "Redis — in-memory store (unauthenticated by default)",
+    21: "FTP — plaintext file transfer",
+    23: "Telnet — plaintext remote access",
+    25: "SMTP — mail relay (potential spam source)",
+    110: "POP3 — plaintext mail",
+    143: "IMAP — plaintext mail",
+    445: "SMB — Windows file sharing (ransomware target)",
+    3306: "MySQL — database exposed to network",
+    5432: "PostgreSQL — database exposed to network",
+    5900: "VNC — remote desktop",
+    6379: "Redis — in-memory store (unauthenticated by default)",
     27017: "MongoDB — document store (unauthenticated by default)",
 }
 
@@ -84,15 +83,15 @@ _CREDENTIAL_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r'(?i)(api_key|apikey|api_secret|secret_key)\s*=\s*["\'][^"\']{8,}["\']'),
     re.compile(r'(?i)(token|auth_token|access_token)\s*=\s*["\'][^"\']{8,}["\']'),
     re.compile(r'(?i)(aws_access_key_id|aws_secret_access_key)\s*=\s*["\'][^"\']{8,}["\']'),
-    re.compile(r'(?i)-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----'),
+    re.compile(r"(?i)-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----"),
     re.compile(r'(?i)(database_url|db_url)\s*=\s*["\'][^"\']{10,}["\']'),
 ]
 
 # Caddy config patterns we check for
-_CADDY_SECURITY_HEADER_PATTERN = re.compile(r'Strict-Transport-Security|X-Content-Type-Options')
-_CADDY_RATE_LIMIT_PATTERN = re.compile(r'rate_limit\s*\{')
-_CADDY_BASICAUTH_PATTERN = re.compile(r'basicauth\s+')
-_CADDY_DOTFILE_PATTERN = re.compile(r'path_regexp.*dotfiles|respond.*403')
+_CADDY_SECURITY_HEADER_PATTERN = re.compile(r"Strict-Transport-Security|X-Content-Type-Options")
+_CADDY_RATE_LIMIT_PATTERN = re.compile(r"rate_limit\s*\{")
+_CADDY_BASICAUTH_PATTERN = re.compile(r"basicauth\s+")
+_CADDY_DOTFILE_PATTERN = re.compile(r"path_regexp.*dotfiles|respond.*403")
 
 
 class SecurityAuditor:
@@ -139,6 +138,7 @@ class SecurityAuditor:
 
             # Check associated Caddyfile if we can locate it
             from homehost.core.config import homehost_dir
+
             caddy_path = homehost_dir() / "projects" / name / "Caddyfile"
             if caddy_path.is_file():
                 findings.extend(self.check_caddy_config(str(caddy_path)))
@@ -181,9 +181,7 @@ class SecurityAuditor:
         findings: list[AuditFinding] = []
         open_ports: list[int] = []
 
-        scan_targets = list(_HIGH_RISK_PORTS.keys()) + [
-            p for p in range(8000, 8100) if p not in _EXPECTED_PORTS
-        ]
+        scan_targets = list(_HIGH_RISK_PORTS.keys()) + [p for p in range(8000, 8100) if p not in _EXPECTED_PORTS]
 
         for port in sorted(set(scan_targets)):
             if _is_port_open("127.0.0.1", port, timeout=0.3):
@@ -203,9 +201,9 @@ class SecurityAuditor:
                             "port, it may be reachable from the internet."
                         ),
                         fix=(
-                            f"If you do not need this service, stop it. "
-                            f"If it must run, bind it to 127.0.0.1 only and ensure it is "
-                            f"not included in any port-forwarding or tunnel rules."
+                            "If you do not need this service, stop it. "
+                            "If it must run, bind it to 127.0.0.1 only and ensure it is "
+                            "not included in any port-forwarding or tunnel rules."
                         ),
                         project_name="",
                     )
@@ -473,7 +471,7 @@ class SecurityAuditor:
         now = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
         score, rating = self.get_risk_score(findings)
 
-        counts: dict[str, int] = {s: 0 for s in ("critical", "high", "medium", "low", "info")}
+        counts: dict[str, int] = dict.fromkeys(("critical", "high", "medium", "low", "info"), 0)
         for f in findings:
             counts[f.severity] = counts.get(f.severity, 0) + 1
 
@@ -514,9 +512,7 @@ class SecurityAuditor:
 
         lines.append("")
         lines.append("=" * 70)
-        lines.append(
-            "  Run 'homehost audit --fix' to auto-remediate where possible."
-        )
+        lines.append("  Run 'homehost audit --fix' to auto-remediate where possible.")
         lines.append("=" * 70)
         return "\n".join(lines)
 

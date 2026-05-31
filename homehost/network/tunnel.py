@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import queue
 import re
 import subprocess
 import threading
 import time
-from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 log = logging.getLogger(__name__)
 
@@ -86,9 +90,7 @@ class TunnelManager:
             "--no-autoupdate",
         ]
 
-        log.info(
-            "Starting quick tunnel for project %r on port %d", project_name, local_port
-        )
+        log.info("Starting quick tunnel for project %r on port %d", project_name, local_port)
 
         url_queue: queue.Queue[str] = queue.Queue(maxsize=1)
 
@@ -100,9 +102,7 @@ class TunnelManager:
                 text=False,  # bytes — we decode per line
             )
         except FileNotFoundError as exc:
-            raise RuntimeError(
-                f"cloudflared binary not found at {self._cloudflared!r}: {exc}"
-            ) from exc
+            raise RuntimeError(f"cloudflared binary not found at {self._cloudflared!r}: {exc}") from exc
         except OSError as exc:
             raise RuntimeError(f"Failed to launch cloudflared: {exc}") from exc
 
@@ -123,8 +123,7 @@ class TunnelManager:
             if proc.poll() is not None:
                 log.error("cloudflared exited early (returncode=%d)", proc.returncode)
                 raise RuntimeError(
-                    f"cloudflared exited before producing a tunnel URL "
-                    f"(returncode={proc.returncode})"
+                    f"cloudflared exited before producing a tunnel URL " f"(returncode={proc.returncode})"
                 )
             try:
                 url = url_queue.get(timeout=0.5)
@@ -135,8 +134,7 @@ class TunnelManager:
         if not url:
             proc.terminate()
             raise RuntimeError(
-                f"Tunnel URL not found within {_TUNNEL_STARTUP_TIMEOUT:.0f} s. "
-                "Is cloudflared configured correctly?"
+                f"Tunnel URL not found within {_TUNNEL_STARTUP_TIMEOUT:.0f} s. " "Is cloudflared configured correctly?"
             )
 
         info = TunnelInfo(
@@ -236,7 +234,7 @@ class TunnelManager:
     def _read_stderr_for_url(
         self,
         proc: subprocess.Popen[bytes],
-        url_queue: "queue.Queue[str]",
+        url_queue: queue.Queue[str],
     ) -> None:
         """Thread target: read stderr line-by-line and push the URL when found."""
         assert proc.stderr is not None
@@ -247,10 +245,8 @@ class TunnelManager:
                 match = _TUNNEL_URL_RE.search(line)
                 if match:
                     url = match.group(0)
-                    try:
+                    with contextlib.suppress(queue.Full):
                         url_queue.put_nowait(url)
-                    except queue.Full:
-                        pass  # already sent
                     # Continue draining stderr so the pipe never blocks
         except (OSError, ValueError):
             pass  # process closed its stderr

@@ -162,6 +162,7 @@ def _get_local_ip() -> str:
     # Lazy import to avoid circular dependency; fall back to socket trick.
     try:
         from homehost.utils.network import get_local_ip  # type: ignore[import]
+
         return get_local_ip()
     except Exception:  # noqa: BLE001
         pass
@@ -254,11 +255,7 @@ class StaticServer:
 
     def is_running(self) -> bool:
         """Return True if the server thread is alive."""
-        return (
-            self._server is not None
-            and self._thread is not None
-            and self._thread.is_alive()
-        )
+        return self._server is not None and self._thread is not None and self._thread.is_alive()
 
     @property
     def request_count(self) -> int:
@@ -282,7 +279,4 @@ class StaticServer:
 
     def __repr__(self) -> str:
         state = "running" if self.is_running() else "stopped"
-        return (
-            f"StaticServer(directory={self._directory!r}, "
-            f"port={self._port}, state={state!r})"
-        )
+        return f"StaticServer(directory={self._directory!r}, " f"port={self._port}, state={state!r})"

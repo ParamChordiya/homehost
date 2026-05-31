@@ -201,9 +201,7 @@ class FirewallManager:
 
     def _pfctl_add_rule(self, port: int, protocol: str, description: str) -> bool:
         """Attempt to add a pfctl pass rule. Requires elevated privileges."""
-        rule = (
-            f"pass in proto {protocol} to any port {port} # {_HOMEHOST_TAG}\n"
-        )
+        rule = f"pass in proto {protocol} to any port {port} # {_HOMEHOST_TAG}\n"
         try:
             # Append to /etc/pf.conf anchor via pfctl -ef
             proc = subprocess.run(
@@ -234,9 +232,7 @@ class FirewallManager:
                 timeout=5,
             )
             remaining_rules = [
-                line
-                for line in result.stdout.splitlines()
-                if not (f"port {port}" in line and _HOMEHOST_TAG in line)
+                line for line in result.stdout.splitlines() if not (f"port {port}" in line and _HOMEHOST_TAG in line)
             ]
             new_ruleset = "\n".join(remaining_rules) + "\n"
             subprocess.run(
@@ -272,9 +268,7 @@ class FirewallManager:
                 self._record_rule(port, protocol, description, method="netsh", rule_name=rule_name)
                 log.info("Windows firewall rule added: %s", rule_name)
                 return True
-            log.warning(
-                "netsh failed (rc=%d): %s", result.returncode, result.stderr.strip()
-            )
+            log.warning("netsh failed (rc=%d): %s", result.returncode, result.stderr.strip())
             return False
         except (FileNotFoundError, subprocess.SubprocessError, OSError) as exc:
             log.warning("Could not add Windows firewall rule for port %d: %s", port, exc)
@@ -297,9 +291,7 @@ class FirewallManager:
                 self._remove_rule_from_db(port)
                 log.info("Windows firewall rule deleted: %s", rule_name)
             else:
-                log.warning(
-                    "netsh delete returned %d: %s", result.returncode, result.stderr.strip()
-                )
+                log.warning("netsh delete returned %d: %s", result.returncode, result.stderr.strip())
             return ok
         except (FileNotFoundError, subprocess.SubprocessError, OSError) as exc:
             log.warning("Could not remove Windows firewall rule for port %d: %s", port, exc)
@@ -338,9 +330,7 @@ class FirewallManager:
     def _is_port_allowed_linux(self, port: int) -> bool:
         if self._ufw_available():
             try:
-                result = subprocess.run(
-                    ["ufw", "status"], capture_output=True, text=True, timeout=5
-                )
+                result = subprocess.run(["ufw", "status"], capture_output=True, text=True, timeout=5)
                 return str(port) in result.stdout
             except (subprocess.SubprocessError, OSError):
                 return False
@@ -426,9 +416,7 @@ class FirewallManager:
             if result.returncode == 0:
                 self._record_rule(port, protocol, description, method="iptables")
                 return True
-            log.warning(
-                "iptables failed (rc=%d): %s", result.returncode, result.stderr.strip()
-            )
+            log.warning("iptables failed (rc=%d): %s", result.returncode, result.stderr.strip())
             return False
         except (FileNotFoundError, subprocess.SubprocessError, OSError) as exc:
             log.warning("iptables not usable: %s", exc)

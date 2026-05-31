@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import platform
@@ -69,10 +70,8 @@ def _read_pid_file(run_dir: Path, name: str) -> _PidData | None:
 
 
 def _delete_pid_file(run_dir: Path, name: str) -> None:
-    try:
+    with contextlib.suppress(OSError):
         _pid_path(run_dir, name).unlink(missing_ok=True)
-    except OSError:
-        pass
 
 
 # ── Process-liveness check ────────────────────────────────────────────────────
@@ -247,10 +246,8 @@ class ProcessManager:
                 log.error("error force-killing process", name=name, pid=pid, error=str(exc))
         elif popen is not None:
             # Reap the zombie so the OS frees the PID entry
-            try:
+            with contextlib.suppress(subprocess.TimeoutExpired):
                 popen.wait(timeout=1)
-            except subprocess.TimeoutExpired:
-                pass
 
         _delete_pid_file(self._run_dir, name)
         self._processes.pop(name, None)

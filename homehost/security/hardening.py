@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import os
 import re
 from pathlib import Path
-from textwrap import indent
-
 
 # ── Security headers ───────────────────────────────────────────────────────────
 
@@ -75,8 +72,8 @@ def generate_rate_limit_block(requests_per_minute: int = 100) -> str:
         "# rate_limit requires the caddy-ratelimit plugin:",
         "# xcaddy build --with github.com/mholt/caddy-ratelimit",
         "rate_limit {",
-        f"    zone dynamic {{",
-        f"        key        {{remote_host}}",
+        "    zone dynamic {",
+        "        key        {remote_host}",
         f"        events     {requests_per_minute}",
         f"        window     {window_seconds}s",
         "    }",
@@ -156,11 +153,13 @@ def generate_full_security_block(
 
 def _generate_basicauth_block(username: str, password_hash: str) -> str:
     """Internal helper — emit a Caddy basicauth block."""
-    return "\n".join([
-        "basicauth /* {",
-        f"    {username} {password_hash}",
-        "}",
-    ])
+    return "\n".join(
+        [
+            "basicauth /* {",
+            f"    {username} {password_hash}",
+            "}",
+        ]
+    )
 
 
 # ── Security posture checker ───────────────────────────────────────────────────
@@ -171,18 +170,18 @@ _CREDENTIAL_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r'(?i)(api_key|apikey|api_secret|secret_key)\s*=\s*["\'][^"\']{8,}["\']'),
     re.compile(r'(?i)(token|auth_token|access_token)\s*=\s*["\'][^"\']{8,}["\']'),
     re.compile(r'(?i)(aws_access_key_id|aws_secret_access_key)\s*=\s*["\'][^"\']{8,}["\']'),
-    re.compile(r'(?i)-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----'),
+    re.compile(r"(?i)-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----"),
 ]
 
 # Known vulnerable package names (informational — not exhaustive)
 _KNOWN_VULNERABLE: set[str] = {
-    "pyyaml",       # various RCE issues in older versions
-    "pillow",       # image parsing vulns in older versions
-    "cryptography", # regularly patched; flag for review
-    "paramiko",     # SSH library; old versions have issues
-    "requests",     # older versions had redirect-bypass issues
-    "urllib3",      # older versions lacked TLS validation
-    "django",       # pinned old versions regularly have CVEs
+    "pyyaml",  # various RCE issues in older versions
+    "pillow",  # image parsing vulns in older versions
+    "cryptography",  # regularly patched; flag for review
+    "paramiko",  # SSH library; old versions have issues
+    "requests",  # older versions had redirect-bypass issues
+    "urllib3",  # older versions lacked TLS validation
+    "django",  # pinned old versions regularly have CVEs
     "flask",
     "jinja2",
     "setuptools",
@@ -283,10 +282,8 @@ def check_security_posture(project_path: str, project_type: str) -> list[dict[st
             mentioned = []
             for line in req_text.splitlines():
                 name = re.split(r"[>=<!~\[\s]", line.strip().lower())[0]
-                if name in _KNOWN_VULNERABLE:
-                    # Only flag if no version pin (==) — unpinned is riskier
-                    if "==" not in line:
-                        mentioned.append(name)
+                if name in _KNOWN_VULNERABLE and "==" not in line:
+                    mentioned.append(name)
             if mentioned:
                 findings.append(
                     {

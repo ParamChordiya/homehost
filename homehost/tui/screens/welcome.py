@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
-from textual import work
-from textual.app import ComposeResult
-from textual.binding import Binding
-from textual.containers import Container, Horizontal, Vertical, ScrollableContainer
-from textual.screen import Screen
-from textual.widgets import Button, Footer, Header, Label, LoadingIndicator, Static
+import contextlib
+from typing import TYPE_CHECKING
 
+from textual import work
+from textual.binding import Binding
+from textual.containers import Horizontal, Vertical
+from textual.screen import Screen
+from textual.widgets import Button, Footer, Label, LoadingIndicator, Static
+
+if TYPE_CHECKING:
+    from textual.app import ComposeResult
 
 LOGO = r"""
  ██╗  ██╗ ██████╗ ███╗   ███╗███████╗██╗  ██╗ ██████╗ ███████╗████████╗
@@ -28,19 +32,19 @@ LOGO_COMPACT = r"""
 
 
 _CHECK_LABELS = {
-    "python":      "Python 3.10+",
-    "internet":    "Internet",
-    "disk":        "Disk Space",
-    "git":         "Git",
-    "node":        "Node.js",
-    "caddy":       "Caddy Server",
+    "python": "Python 3.10+",
+    "internet": "Internet",
+    "disk": "Disk Space",
+    "git": "Git",
+    "node": "Node.js",
+    "caddy": "Caddy Server",
     "cloudflared": "cloudflared",
 }
 
 _STATUS_ICONS = {
-    "ok":      ("✅", "label-success"),
+    "ok": ("✅", "label-success"),
     "warning": ("⚠️ ", "label-warning"),
-    "error":   ("❌", "label-error"),
+    "error": ("❌", "label-error"),
     "missing": ("⚠️ ", "label-warning"),
     "pending": ("⏳", "label-dim"),
 }
@@ -205,11 +209,11 @@ class WelcomeScreen(Screen):
             # ── Main menu panel ───────────────────────────────────────────────
             with Vertical(id="menu-panel"):
                 yield Label("Main Menu", classes="panel-title")
-                yield Button("[1] 🚀  New Project",       id="new-project",  classes="menu-button -primary")
-                yield Button("[2] 📂  Manage Projects",   id="manage",       classes="menu-button")
-                yield Button("[3] 📊  Open Dashboard",    id="dashboard",    classes="menu-button")
-                yield Button("[4] ⚙️   Settings",          id="settings",     classes="menu-button")
-                yield Button("[5] 🗑️   Uninstall HomeHost", id="uninstall",   classes="menu-button -error")
+                yield Button("[1] 🚀  New Project", id="new-project", classes="menu-button -primary")
+                yield Button("[2] 📂  Manage Projects", id="manage", classes="menu-button")
+                yield Button("[3] 📊  Open Dashboard", id="dashboard", classes="menu-button")
+                yield Button("[4] ⚙️   Settings", id="settings", classes="menu-button")
+                yield Button("[5] 🗑️   Uninstall HomeHost", id="uninstall", classes="menu-button -error")
 
         yield Static("HomeHost v0.1.0  •  Press ? for help", id="version-label")
         yield Footer()
@@ -222,6 +226,7 @@ class WelcomeScreen(Screen):
         """Run all system checks in a background thread and update UI."""
         try:
             from homehost.core.detector import run_all_checks
+
             results = run_all_checks()
         except Exception as exc:  # noqa: BLE001
             self.app.call_from_thread(
@@ -251,10 +256,8 @@ class WelcomeScreen(Screen):
 
         # Hide loading indicator when done
         def _done() -> None:
-            try:
+            with contextlib.suppress(Exception):
                 self.query_one("#loading-row").display = False
-            except Exception:
-                pass
 
         self.app.call_from_thread(_done)
 
@@ -281,6 +284,7 @@ class WelcomeScreen(Screen):
 
     def action_menu_dashboard(self) -> None:
         import webbrowser
+
         webbrowser.open("http://localhost:9111")
         self.app.notify("Opening dashboard in browser…")
 
@@ -295,6 +299,7 @@ class WelcomeScreen(Screen):
     def _go_new_project(self) -> None:
         try:
             from homehost.tui.screens.setup import SetupScreen
+
             self.app.push_screen(SetupScreen())
         except ImportError as exc:
             self.app.notify(f"Cannot open setup screen: {exc}", severity="error")
@@ -302,6 +307,7 @@ class WelcomeScreen(Screen):
     def _go_manage(self) -> None:
         try:
             from homehost.tui.screens.manage import ManageScreen
+
             self.app.push_screen(ManageScreen())
         except ImportError as exc:
             self.app.notify(f"Cannot open manage screen: {exc}", severity="error")
@@ -312,6 +318,7 @@ class WelcomeScreen(Screen):
     def _go_uninstall(self) -> None:
         try:
             from homehost.tui.screens.uninstall import UninstallScreen
+
             self.app.push_screen(UninstallScreen())
         except ImportError as exc:
             self.app.notify(f"Cannot open uninstall screen: {exc}", severity="error")

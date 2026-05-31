@@ -25,7 +25,6 @@ from homehost.core.detector import (
     run_all_checks,
 )
 
-
 # ── detect_system / _os_name ───────────────────────────────────────────────────
 
 
@@ -284,9 +283,11 @@ class TestCheckPythonVersion:
 
     def test_error_for_old_python(self):
         import sys
+
         # sys.version_info is a C-level struct — patch just the tuple comparison
         # by substituting a namedtuple-compatible object via a helper.
         from collections import namedtuple
+
         FakeVI = namedtuple("version_info", ["major", "minor", "micro", "releaselevel", "serial"])
         fake_vi = FakeVI(3, 9, 0, "final", 0)
         with patch("homehost.core.detector.sys.version_info", fake_vi):

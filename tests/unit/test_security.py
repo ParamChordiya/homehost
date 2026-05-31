@@ -19,7 +19,6 @@ from homehost.security.secrets import (
     verify_password,
 )
 
-
 # ── hash_password ──────────────────────────────────────────────────────────────
 
 

@@ -45,10 +45,10 @@ def _find_free_port(start: int = _DEFAULT_APP_PORT_START) -> int:
 @dataclass
 class AppServerInfo:
     project_name: str
-    project_type: str          # from ProjectType enum values
-    app_port: int              # port the app server runs on
-    caddy_port: int            # port Caddy listens on (public-facing)
-    process_name: str          # name in ProcessManager
+    project_type: str  # from ProjectType enum values
+    app_port: int  # port the app server runs on
+    caddy_port: int  # port Caddy listens on (public-facing)
+    process_name: str  # name in ProcessManager
     start_command: list[str] = field(default_factory=list)
     cwd: Path = field(default_factory=Path)
 
@@ -88,9 +88,7 @@ class ReverseProxyManager:
 
         env = self._build_env(project_type, project_path, app_port)
 
-        logger.info(
-            "Starting app server for %s (%s) on port %d", name, project_type, app_port
-        )
+        logger.info("Starting app server for %s (%s) on port %d", name, project_type, app_port)
         logger.debug("Command: %s", cmd)
 
         try:
@@ -103,9 +101,7 @@ class ReverseProxyManager:
                 close_fds=True,
             )
         except FileNotFoundError as exc:
-            raise RuntimeError(
-                f"Could not start app server for {name}: executable not found — {exc}"
-            ) from exc
+            raise RuntimeError(f"Could not start app server for {name}: executable not found — {exc}") from exc
         except OSError as exc:
             raise RuntimeError(f"Could not start app server for {name}: {exc}") from exc
 
@@ -115,9 +111,7 @@ class ReverseProxyManager:
 
         if not self.wait_for_ready(app_port, timeout=30):
             proc.kill()
-            raise RuntimeError(
-                f"App server for '{name}' did not become ready on port {app_port} within 30 s"
-            )
+            raise RuntimeError(f"App server for '{name}' did not become ready on port {app_port} within 30 s")
 
         info = AppServerInfo(
             project_name=name,
@@ -227,10 +221,7 @@ class ReverseProxyManager:
         project_type: str = getattr(project_config, "type", "custom")
 
         # Respect an explicit start_command override
-        if (
-            hasattr(project_config, "server")
-            and project_config.server.start_command
-        ):
+        if hasattr(project_config, "server") and project_config.server.start_command:
             raw: str = project_config.server.start_command
             return _expand_command(raw, project_path)
 
@@ -252,9 +243,7 @@ class ReverseProxyManager:
                 "Set server.start_command in project.toml."
             )
 
-    def _build_env(
-        self, project_type: str, project_path: Path, app_port: int
-    ) -> dict[str, str]:
+    def _build_env(self, project_type: str, project_path: Path, app_port: int) -> dict[str, str]:
         """Build the environment dict for the app server process."""
         env = os.environ.copy()
         env["PORT"] = str(app_port)
@@ -435,6 +424,7 @@ def _expand_command(raw: str, project_path: Path) -> list[str]:
     """Split a shell command string into a list, expanding ${project_dir}."""
     raw = raw.replace("${project_dir}", str(project_path))
     import shlex
+
     return shlex.split(raw)
 
 

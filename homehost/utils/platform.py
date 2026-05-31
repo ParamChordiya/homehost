@@ -4,13 +4,10 @@ from __future__ import annotations
 
 import os
 import platform
-import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any
-
 
 # ---------------------------------------------------------------------------
 # OS / Architecture detection
@@ -71,11 +68,7 @@ _MACOS_VERSION_NAMES: dict[str, str] = {
 def _macos_version_name(version: str) -> str:
     major = version.split(".")[0]
     minor_key = ".".join(version.split(".")[:2])
-    return (
-        _MACOS_VERSION_NAMES.get(major)
-        or _MACOS_VERSION_NAMES.get(minor_key)
-        or ""
-    )
+    return _MACOS_VERSION_NAMES.get(major) or _MACOS_VERSION_NAMES.get(minor_key) or ""
 
 
 def get_os_version() -> str:
@@ -94,7 +87,7 @@ def get_os_version() -> str:
 
     if is_windows():
         try:
-            build = platform.version()  # e.g. '10.0.22621'
+            platform.version()  # e.g. '10.0.22621'
             release = platform.release()  # e.g. '10' or '11'
             # Attempt to get the friendly release name from winver
             import winreg  # type: ignore[import]
@@ -244,8 +237,8 @@ def get_system_info_string() -> str:
         import psutil  # type: ignore[import]
 
         mem = psutil.virtual_memory()
-        total_gb = mem.total / (1024 ** 3)
-        avail_gb = mem.available / (1024 ** 3)
+        total_gb = mem.total / (1024**3)
+        avail_gb = mem.available / (1024**3)
         lines.append(f"Memory:       {avail_gb:.1f} GB free / {total_gb:.1f} GB total")
         cpu_count = psutil.cpu_count(logical=True)
         lines.append(f"CPU cores:    {cpu_count}")

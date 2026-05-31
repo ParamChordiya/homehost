@@ -3,18 +3,20 @@
 from __future__ import annotations
 
 import base64
+import contextlib
 import json
 import os
 import secrets
 import string
 import warnings
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import bcrypt
 
-from homehost.core.config import load_project_config, project_config_path, save_project_config
+from homehost.core.config import load_project_config, save_project_config
 
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # ── Password helpers ───────────────────────────────────────────────────────────
 
@@ -87,10 +89,7 @@ def generate_strong_password(length: int = 16) -> str:
 
     chars = [secrets.choice(_PASSWORD_ALPHABET) for _ in range(length)]
     segment_size = length // 4
-    segments = [
-        "".join(chars[i * segment_size : (i + 1) * segment_size])
-        for i in range(4)
-    ]
+    segments = ["".join(chars[i * segment_size : (i + 1) * segment_size]) for i in range(4)]
     return "-".join(segments)
 
 
@@ -238,6 +237,7 @@ class SecretStore:
         """
         if store_path is None:
             from homehost.core.config import homehost_dir
+
             store_path = homehost_dir()
 
         self._dir = store_path
@@ -335,10 +335,8 @@ class SecretStore:
             os.chmod(tmp, 0o600)
             os.replace(tmp, self._store_path)
         except Exception:
-            try:
+            with contextlib.suppress(OSError):
                 os.unlink(tmp)
-            except OSError:
-                pass
             raise
 
     # ── Public API ─────────────────────────────────────────────────────────────
