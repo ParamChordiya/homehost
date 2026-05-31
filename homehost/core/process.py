@@ -239,7 +239,7 @@ class ProcessManager:
                 elif _IS_WINDOWS:
                     psutil.Process(pid).kill()
                 else:
-                    os.kill(pid, signal.SIGKILL)
+                    os.kill(pid, signal.SIGKILL)  # type: ignore[attr-defined]
             except (ProcessLookupError, psutil.NoSuchProcess):
                 pass
             except Exception as exc:  # noqa: BLE001

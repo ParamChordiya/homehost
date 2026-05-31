@@ -88,7 +88,7 @@ def get_all_local_ips() -> list[str]:
         hostname = socket.gethostname()
         info_list = socket.getaddrinfo(hostname, None, socket.AF_INET)
         for info in info_list:
-            addr = info[4][0]
+            addr = str(info[4][0])
             if addr != "127.0.0.1" and addr not in ips:
                 ips.append(addr)
     except OSError:
@@ -109,7 +109,7 @@ def get_all_local_ips() -> list[str]:
                     iface_name = iface[1].encode()
                     try:
                         packed = struct.pack("256s", iface_name[:15])
-                        res = fcntl.ioctl(sock.fileno(), _siocgifaddr, packed)
+                        res = fcntl.ioctl(sock.fileno(), _siocgifaddr, packed)  # type: ignore[attr-defined]
                         addr = socket.inet_ntoa(res[20:24])
                         if addr != "127.0.0.1" and addr not in ips:
                             ips.append(addr)

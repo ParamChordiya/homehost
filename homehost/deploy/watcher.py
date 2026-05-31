@@ -73,20 +73,20 @@ class _DebouncedHandler(FileSystemEventHandler):
 
     def on_modified(self, event: FileSystemEvent) -> None:
         if not event.is_directory:
-            self._handle(event.src_path, "modified")
+            self._handle(str(event.src_path), "modified")
 
     def on_created(self, event: FileSystemEvent) -> None:
         if not event.is_directory:
-            self._handle(event.src_path, "created")
+            self._handle(str(event.src_path), "created")
 
     def on_deleted(self, event: FileSystemEvent) -> None:
         if not event.is_directory:
-            self._handle(event.src_path, "deleted")
+            self._handle(str(event.src_path), "deleted")
 
     def on_moved(self, event: FileSystemEvent) -> None:  # type: ignore[override]
         # Treat dest as "created" so callers get the new path
         if hasattr(event, "dest_path") and not event.is_directory:
-            self._handle(event.dest_path, "created")
+            self._handle(str(event.dest_path), "created")
 
     # ------------------------------------------------------------------
     # Internal
