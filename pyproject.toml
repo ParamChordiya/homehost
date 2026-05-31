@@ -4,11 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "homehost"
-version = "0.1.2"
+version = "0.1.3"
 description = "Turn your laptop into a web server. Host websites from home with zero config."
 readme = "README.md"
 license = { file = "LICENSE" }
-authors = [{ name = "HomeHost Contributors" }]
+authors = [{ name = "Param Chordiya", email = "param1111.chordiya@gmail.com" }]
 keywords = [
     "homehost", "web-server", "self-hosted", "caddy", "cloudflare-tunnel",
     "cli", "tui", "reverse-proxy", "localhost", "hosting", "developer-tools",
@@ -25,6 +25,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
     "Topic :: System :: Networking",
     "Topic :: Utilities",
@@ -61,11 +62,11 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/homehost-dev/homehost"
-Documentation = "https://github.com/homehost-dev/homehost/blob/main/docs/quickstart.md"
-Repository = "https://github.com/homehost-dev/homehost"
-Issues = "https://github.com/homehost-dev/homehost/issues"
-Changelog = "https://github.com/homehost-dev/homehost/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/ParamChordiya/homehost"
+Documentation = "https://github.com/ParamChordiya/homehost/blob/main/docs/quickstart.md"
+Repository = "https://github.com/ParamChordiya/homehost"
+Issues = "https://github.com/ParamChordiya/homehost/issues"
+Changelog = "https://github.com/ParamChordiya/homehost/blob/main/CHANGELOG.md"
 
 [project.scripts]
 homehost = "homehost.cli:app"
