@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HomeHost Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* ── CSS custom properties ─────────────────────────────────────────────── */
+    :root[data-theme="dark"] {
+      --bg-primary:    #0f0f17;
+      --bg-secondary:  #1a1a2e;
+      --bg-card:       #16213e;
+      --bg-hover:      #1e2d4a;
+      --bg-input:      #1a1a2e;
+      --text-primary:  #f8fafc;
+      --text-secondary:#94a3b8;
+      --text-muted:    #475569;
+      --accent:        #4c9be8;
+      --accent-hover:  #60aaed;
+      --success:       #4ade80;
+      --warning:       #fbbf24;
+      --error:         #f87171;
+      --border:        #2d3748;
+      --border-hover:  #3d4f6a;
+      --shadow:        rgba(0,0,0,0.4);
+      --shadow-card:   0 4px 24px rgba(0,0,0,0.35);
+      --sidebar-width: 240px;
+      --header-height: 56px;
+      --radius:        10px;
+      --radius-sm:     6px;
+      --transition:    0.18s ease;
+    }
+    :root[data-theme="light"] {
+      --bg-primary:    #f4f6fb;
+      --bg-secondary:  #ffffff;
+      --bg-card:       #ffffff;
+      --bg-hover:      #f0f4ff;
+      --bg-input:      #f8fafc;
+      --text-primary:  #0f172a;
+      --text-secondary:#475569;
+      --text-muted:    #94a3b8;
+      --accent:        #2563eb;
+      --accent-hover:  #1d4ed8;
+      --success:       #16a34a;
+      --warning:       #d97706;
+      --error:         #dc2626;
+      --border:        #e2e8f0;
+      --border-hover:  #cbd5e1;
+      --shadow:        rgba(0,0,0,0.08);
+      --shadow-card:   0 4px 24px rgba(0,0,0,0.07);
+      --sidebar-width: 240px;
+      --header-height: 56px;
+      --radius:        10px;
+      --radius-sm:     6px;
+      --transition:    0.18s ease;
+    }
+
+    /* ── Reset & base ───────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                   "Inter", "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { color: var(--accent-hover); text-decoration: underline; }
+    button { cursor: pointer; font-family: inherit; }
+
+    /* ── Layout skeleton ───────────────────────────────────────────────────── */
+    #app {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ───────────────────────────────────────────────────────────── */
+    #sidebar {
+      width: var(--sidebar-width);
+      flex-shrink: 0;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: width var(--transition), transform var(--transition);
+      z-index: 50;
+    }
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 18px;
+      height: var(--header-height);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .sidebar-logo .logo-icon {
+      width: 28px; height: 28px;
+      background: var(--accent);
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; color: #fff; font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    .sidebar-logo .logo-text {
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--text-primary);
+      letter-spacing: -0.3px;
+    }
+    .sidebar-logo .logo-text span {
+      color: var(--accent);
+    }
+
+    .sidebar-section-label {
+      padding: 16px 18px 6px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .sidebar-nav {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 18px;
+      border-radius: var(--radius-sm);
+      margin: 1px 8px;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background var(--transition), color var(--transition);
+      border: none;
+      background: none;
+      width: calc(100% - 16px);
+      text-align: left;
+    }
+    .nav-item:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+    .nav-item.active {
+      background: color-mix(in srgb, var(--accent) 15%, transparent);
+      color: var(--accent);
+    }
+    .nav-item .nav-icon { font-size: 15px; flex-shrink: 0; width: 18px; text-align: center; }
+    .nav-item .status-dot {
+      width: 6px; height: 6px; border-radius: 50%; margin-left: auto; flex-shrink: 0;
+    }
+    .status-dot.running { background: var(--success); }
+    .status-dot.stopped { background: var(--text-muted); }
+    .status-dot.error   { background: var(--error); }
+
+    .sidebar-footer {
+      border-top: 1px solid var(--border);
+      padding: 12px 8px;
+    }
+
+    /* ── Main area ─────────────────────────────────────────────────────────── */
+    #main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    /* ── Topbar ─────────────────────────────────────────────────────────────── */
+    #topbar {
+      height: var(--header-height);
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      gap: 16px;
+      flex-shrink: 0;
+    }
+    #menu-toggle {
+      display: none;
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 18px;
+      padding: 4px;
+      border-radius: var(--radius-sm);
+    }
+    #menu-toggle:hover { background: var(--bg-hover); }
+    #page-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      flex: 1;
+    }
+    .topbar-actions {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .ws-status {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .ws-indicator {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--text-muted);
+      transition: background 0.3s;
+    }
+    .ws-indicator.connected { background: var(--success); }
+    .ws-indicator.connecting { background: var(--warning); animation: pulse 1.2s infinite; }
+    .ws-indicator.error { background: var(--error); }
+
+    #theme-toggle {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      padding: 5px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      display: flex; align-items: center; gap: 6px;
+      transition: all var(--transition);
+    }
+    #theme-toggle:hover {
+      border-color: var(--border-hover);
+      color: var(--text-primary);
+      background: var(--bg-hover);
+    }
+
+    /* ── Content ────────────────────────────────────────────────────────────── */
+    #content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+    }
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ── Overview page ──────────────────────────────────────────────────────── */
+    .overview-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      gap: 16px;
+    }
+    .overview-header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.4px;
+    }
+    .overview-header p {
+      margin-top: 4px;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    /* ── Stats strip ────────────────────────────────────────────────────────── */
+    .stats-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+    }
+    .stat-card .stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .stat-card .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--text-primary);
+    }
+    .stat-card .stat-value.running-color { color: var(--success); }
+    .stat-card .stat-value.error-color   { color: var(--error); }
+
+    /* ── Project cards grid ─────────────────────────────────────────────────── */
+    .projects-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    /* ── Project card ───────────────────────────────────────────────────────── */
+    .project-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow-card);
+      transition: border-color var(--transition), transform var(--transition), box-shadow var(--transition);
+      cursor: default;
+    }
+    .project-card:hover {
+      border-color: var(--border-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px var(--shadow);
+    }
+    .card-header {
+      display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px;
+    }
+    .card-status-icon {
+      margin-top: 2px;
+      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    }
+    .card-status-icon.running {
+      background: var(--success);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 20%, transparent);
+      animation: pulse-ring 2.4s ease-out infinite;
+    }
+    .card-status-icon.stopped { background: var(--text-muted); }
+    .card-status-icon.error {
+      background: var(--error);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--error) 20%, transparent);
+    }
+    .card-title-group { flex: 1; min-width: 0; }
+    .card-title {
+      font-size: 15px; font-weight: 700; letter-spacing: -0.2px;
+      color: var(--text-primary);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .card-status-label {
+      font-size: 11px; font-weight: 600; margin-top: 2px;
+      text-transform: capitalize;
+    }
+    .card-status-label.running { color: var(--success); }
+    .card-status-label.stopped { color: var(--text-muted); }
+    .card-status-label.error   { color: var(--error); }
+
+    .type-badge {
+      padding: 3px 8px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      flex-shrink: 0;
+      background: color-mix(in srgb, var(--accent) 15%, transparent);
+      color: var(--accent);
+      border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    }
+
+    .card-urls {
+      display: flex; flex-direction: column; gap: 4px;
+      margin-bottom: 14px;
+    }
+    .card-url-row {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-url-label {
+      font-size: 10px; font-weight: 600; letter-spacing: 0.07em;
+      text-transform: uppercase; color: var(--text-muted); width: 38px; flex-shrink: 0;
+    }
+    .card-url-link {
+      font-size: 12px; color: var(--accent);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .card-url-link:hover { color: var(--accent-hover); }
+
+    .card-metrics {
+      display: flex; gap: 20px; margin-bottom: 16px;
+      padding: 10px 12px;
+      background: var(--bg-secondary);
+      border-radius: var(--radius-sm);
+    }
+    .metric-item { display: flex; flex-direction: column; gap: 2px; }
+    .metric-label {
+      font-size: 10px; font-weight: 600; letter-spacing: 0.07em;
+      text-transform: uppercase; color: var(--text-muted);
+    }
+    .metric-value {
+      font-size: 16px; font-weight: 700; letter-spacing: -0.3px;
+      color: var(--text-primary);
+    }
+    .metric-value.small { font-size: 13px; }
+
+    .card-actions {
+      display: flex; gap: 8px;
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 12px; font-weight: 600;
+      border: none;
+      transition: all var(--transition);
+      white-space: nowrap;
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+    .btn-ghost {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+    .btn-ghost:hover:not(:disabled) {
+      border-color: var(--border-hover);
+      color: var(--text-primary);
+      background: var(--bg-hover);
+    }
+    .btn-danger {
+      background: none;
+      border: 1px solid color-mix(in srgb, var(--error) 40%, transparent);
+      color: var(--error);
+    }
+    .btn-danger:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--error) 12%, transparent);
+    }
+    .btn-icon {
+      padding: 6px 8px;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+    }
+    .btn-icon:hover { border-color: var(--border-hover); color: var(--text-primary); }
+
+    /* ── Loading skeleton ───────────────────────────────────────────────────── */
+    .skeleton {
+      background: linear-gradient(90deg,
+        var(--bg-card) 25%,
+        var(--bg-hover) 50%,
+        var(--bg-card) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: var(--radius-sm);
+    }
+    .skeleton-card {
+      height: 220px;
+      border-radius: var(--radius);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 20px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .skeleton-line { height: 14px; }
+    .skeleton-line.w30 { width: 30%; }
+    .skeleton-line.w60 { width: 60%; }
+    .skeleton-line.w80 { width: 80%; }
+    .skeleton-line.w100 { width: 100%; }
+
+    /* ── Project detail page ────────────────────────────────────────────────── */
+    .detail-header {
+      display: flex; align-items: center; gap: 14px; margin-bottom: 24px;
+    }
+    .back-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-secondary);
+      padding: 6px 10px; border-radius: var(--radius-sm); font-size: 13px;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .back-btn:hover { border-color: var(--border-hover); color: var(--text-primary); }
+    .detail-title { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 768px) { .detail-grid { grid-template-columns: 1fr; } }
+
+    .detail-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+    }
+    .detail-card h3 {
+      font-size: 13px; font-weight: 600; margin-bottom: 14px;
+      color: var(--text-secondary);
+      text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px;
+    }
+
+    /* Log viewer */
+    #log-output {
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      font-family: "SF Mono", "Fira Code", "Cascadia Code", "Consolas", monospace;
+      font-size: 12px;
+      line-height: 1.7;
+      color: var(--text-secondary);
+      height: 280px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    /* ── Settings page ──────────────────────────────────────────────────────── */
+    .settings-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .settings-section h2 {
+      font-size: 15px; font-weight: 700; margin-bottom: 16px;
+    }
+    .settings-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .settings-row:last-child { border-bottom: none; }
+    .settings-row-info label {
+      font-size: 13px; font-weight: 500; display: block;
+    }
+    .settings-row-info small {
+      font-size: 12px; color: var(--text-muted); margin-top: 2px; display: block;
+    }
+
+    /* ── Empty state ────────────────────────────────────────────────────────── */
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; padding: 64px 24px; text-align: center;
+    }
+    .empty-state .empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.4; }
+    .empty-state h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .empty-state p { color: var(--text-secondary); font-size: 13px; max-width: 360px; }
+    .empty-state code {
+      display: inline-block; margin-top: 16px;
+      background: var(--bg-secondary); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 8px 16px;
+      font-family: monospace; font-size: 13px; color: var(--accent);
+    }
+
+    /* ── System info bar ────────────────────────────────────────────────────── */
+    #system-bar {
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      padding: 8px 24px;
+      display: flex; gap: 24px; align-items: center;
+      flex-shrink: 0;
+    }
+    .sys-item {
+      display: flex; gap: 6px; align-items: center;
+      font-size: 11px; color: var(--text-muted);
+    }
+    .sys-item strong { color: var(--text-secondary); }
+
+    /* ── Toast notifications ────────────────────────────────────────────────── */
+    #toast-container {
+      position: fixed; bottom: 24px; right: 24px;
+      display: flex; flex-direction: column-reverse; gap: 10px;
+      z-index: 1000;
+    }
+    .toast {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 32px var(--shadow);
+      font-size: 13px;
+      min-width: 240px; max-width: 380px;
+      animation: toast-in 0.22s ease;
+      transition: opacity 0.22s, transform 0.22s;
+    }
+    .toast.removing { opacity: 0; transform: translateX(20px); }
+    .toast-icon { font-size: 16px; flex-shrink: 0; }
+    .toast-message { flex: 1; }
+    .toast.success { border-left: 3px solid var(--success); }
+    .toast.error   { border-left: 3px solid var(--error); }
+    .toast.info    { border-left: 3px solid var(--accent); }
+    .toast.warning { border-left: 3px solid var(--warning); }
+
+    /* ── Mobile sidebar overlay ─────────────────────────────────────────────── */
+    #sidebar-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 40;
+    }
+
+    /* ── Responsive ─────────────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      #sidebar {
+        position: fixed; left: 0; top: 0; bottom: 0;
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+        z-index: 50;
+      }
+      #sidebar.open { transform: translateX(0); }
+      #sidebar-overlay.open { display: block; }
+      #menu-toggle { display: flex; }
+      #content { padding: 16px; }
+      .stats-strip { grid-template-columns: 1fr 1fr; }
+      .projects-grid { grid-template-columns: 1fr; }
+      #system-bar { display: none; }
+    }
+
+    /* ── Animations ─────────────────────────────────────────────────────────── */
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.4; }
+    }
+    @keyframes pulse-ring {
+      0%   { box-shadow: 0 0 0 0   color-mix(in srgb, var(--success) 50%, transparent); }
+      70%  { box-shadow: 0 0 0 6px color-mix(in srgb, var(--success) 0%,  transparent); }
+      100% { box-shadow: 0 0 0 0   color-mix(in srgb, var(--success) 0%,  transparent); }
+    }
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateX(16px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .spinning { display: inline-block; animation: spin 0.8s linear infinite; }
+  </style>
+</head>
+<body>
+
+<div id="app">
+  <!-- ── Mobile overlay ────────────────────────────────────────────────────── -->
+  <div id="sidebar-overlay"></div>
+
+  <!-- ── Sidebar ──────────────────────────────────────────────────────────── -->
+  <nav id="sidebar" role="navigation" aria-label="Main navigation">
+    <div class="sidebar-logo">
+      <div class="logo-icon">H</div>
+      <div class="logo-text">Home<span>Host</span></div>
+    </div>
+
+    <div class="sidebar-nav">
+      <div class="sidebar-section-label">General</div>
+      <button class="nav-item active" data-page="overview" onclick="dashboard.navigate('overview')">
+        <span class="nav-icon">⊞</span>
+        Overview
+      </button>
+      <button class="nav-item" data-page="settings" onclick="dashboard.navigate('settings')">
+        <span class="nav-icon">⚙</span>
+        Settings
+      </button>
+
+      <div class="sidebar-section-label" style="margin-top:8px;">Projects</div>
+      <div id="project-nav-items">
+        <!-- Populated by JS -->
+        <div style="padding: 8px 18px; color: var(--text-muted); font-size: 12px;">Loading...</div>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <button class="nav-item" onclick="dashboard.openDocs()">
+        <span class="nav-icon">?</span>
+        Documentation
+      </button>
+    </div>
+  </nav>
+
+  <!-- ── Main ─────────────────────────────────────────────────────────────── -->
+  <div id="main">
+    <!-- Topbar -->
+    <header id="topbar">
+      <button id="menu-toggle" aria-label="Toggle menu" onclick="dashboard.toggleSidebar()">☰</button>
+      <div id="page-title">Overview</div>
+      <div class="topbar-actions">
+        <div class="ws-status" title="WebSocket connection status">
+          <div class="ws-indicator connecting" id="ws-indicator"></div>
+          <span id="ws-status-text">Connecting…</span>
+        </div>
+        <button id="theme-toggle" onclick="dashboard.toggleTheme()" aria-label="Toggle theme">
+          <span id="theme-icon">☀</span>
+          <span id="theme-label">Light</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <main id="content">
+      <!-- ── Overview Page ── -->
+      <div id="page-overview" class="page active">
+        <div class="overview-header">
+          <div>
+            <h1>Project Overview</h1>
+            <p>Monitor and manage all your hosted projects in one place.</p>
+          </div>
+          <button class="btn btn-primary" onclick="dashboard.refreshProjects()">
+            ↻ Refresh
+          </button>
+        </div>
+
+        <!-- Stats strip -->
+        <div class="stats-strip" id="stats-strip">
+          <div class="stat-card">
+            <div class="stat-label">Total Projects</div>
+            <div class="stat-value" id="stat-total">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Running</div>
+            <div class="stat-value running-color" id="stat-running">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Stopped</div>
+            <div class="stat-value" id="stat-stopped">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Errors</div>
+            <div class="stat-value error-color" id="stat-errors">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Requests Today</div>
+            <div class="stat-value" id="stat-requests">—</div>
+          </div>
+        </div>
+
+        <!-- Project grid -->
+        <div class="projects-grid" id="projects-grid">
+          <!-- Skeleton -->
+          <div class="skeleton-card">
+            <div class="skeleton skeleton-line w60"></div>
+            <div class="skeleton skeleton-line w30"></div>
+            <div class="skeleton skeleton-line w80"></div>
+            <div class="skeleton skeleton-line w100"></div>
+            <div class="skeleton skeleton-line w50" style="width:50%; height: 32px; margin-top: auto;"></div>
+          </div>
+          <div class="skeleton-card">
+            <div class="skeleton skeleton-line w60"></div>
+            <div class="skeleton skeleton-line w30"></div>
+            <div class="skeleton skeleton-line w80"></div>
+            <div class="skeleton skeleton-line w100"></div>
+            <div class="skeleton skeleton-line w50" style="width:50%; height: 32px; margin-top: auto;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Project Detail Page ── -->
+      <div id="page-project" class="page">
+        <div class="detail-header">
+          <button class="btn btn-ghost back-btn" onclick="dashboard.navigate('overview')">
+            ← Back
+          </button>
+          <div>
+            <div class="detail-title" id="detail-project-name">Project</div>
+            <div id="detail-project-status" style="font-size:12px; color: var(--text-muted);"></div>
+          </div>
+          <div style="margin-left: auto; display: flex; gap: 8px;">
+            <button class="btn btn-ghost" id="detail-start-btn" onclick="dashboard.detailAction('start')">▶ Start</button>
+            <button class="btn btn-danger" id="detail-stop-btn" onclick="dashboard.detailAction('stop')">■ Stop</button>
+            <button class="btn btn-ghost" id="detail-restart-btn" onclick="dashboard.detailAction('restart')">↺ Restart</button>
+          </div>
+        </div>
+
+        <div class="detail-grid">
+          <!-- Info card -->
+          <div class="detail-card">
+            <h3>Project Info</h3>
+            <div id="detail-info-body" style="display: flex; flex-direction: column; gap: 10px;"></div>
+          </div>
+          <!-- Metrics card -->
+          <div class="detail-card">
+            <h3>Request Timeline (last 24h)</h3>
+            <div id="detail-metrics-chart" class="chart-container"></div>
+          </div>
+        </div>
+
+        <!-- Logs card -->
+        <div class="detail-card" style="margin-bottom: 16px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 12px;">
+            <h3 style="margin-bottom:0;">Recent Logs</h3>
+            <button class="btn btn-ghost" style="font-size:11px; padding: 4px 8px;" onclick="dashboard.refreshDetailLogs()">
+              ↻ Refresh
+            </button>
+          </div>
+          <div id="log-output">Loading logs...</div>
+        </div>
+      </div>
+
+      <!-- ── Settings Page ── -->
+      <div id="page-settings" class="page">
+        <div class="overview-header">
+          <div>
+            <h1>Settings</h1>
+            <p>Configure your HomeHost installation.</p>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h2>Appearance</h2>
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <label>Theme</label>
+              <small>Choose between dark and light mode.</small>
+            </div>
+            <button class="btn btn-ghost" onclick="dashboard.toggleTheme()">
+              Toggle Theme
+            </button>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h2>Dashboard</h2>
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <label>Dashboard Port</label>
+              <small>The port this dashboard runs on (requires restart).</small>
+            </div>
+            <span style="font-size:13px; color: var(--text-secondary);">9111</span>
+          </div>
+          <div class="settings-row">
+            <div class="settings-row-info">
+              <label>WebSocket</label>
+              <small>Real-time status updates via WebSocket.</small>
+            </div>
+            <div id="settings-ws-status" style="font-size:12px; color: var(--text-muted);">—</div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h2>System Information</h2>
+          <div id="settings-system-body" style="display: flex; flex-direction: column; gap: 0;"></div>
+        </div>
+      </div>
+    </main>
+
+    <!-- System bar -->
+    <footer id="system-bar">
+      <div class="sys-item"><strong id="sys-os">—</strong></div>
+      <div class="sys-item">Caddy: <strong id="sys-caddy">—</strong></div>
+      <div class="sys-item">Uptime: <strong id="sys-uptime">—</strong></div>
+      <div class="sys-item">HomeHost <strong id="sys-version">—</strong></div>
+    </footer>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container" role="status" aria-live="polite"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

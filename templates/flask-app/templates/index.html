@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<!-- ✏️ Edit this Jinja2 template to customise your Flask app's homepage -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flask App — HomeHost</title>
+  <style>
+    /* ── Design tokens ── */
+    :root {
+      --primary:       #6c63ff;
+      --primary-dark:  #4e46e5;
+      --accent:        #f59e0b;
+      --bg:            #ffffff;
+      --surface:       #f8f7ff;
+      --surface-2:     #ede9fe;
+      --border:        #e5e7eb;
+      --text:          #111827;
+      --muted:         #6b7280;
+      --code-bg:       #1e1b4b;
+      --code-fg:       #e0e7ff;
+      --radius-md:     0.75rem;
+      --radius-lg:     1.25rem;
+      --radius-pill:   9999px;
+      --shadow-sm:     0 1px 3px rgb(0 0 0 / 8%);
+      --shadow-md:     0 4px 12px rgb(0 0 0 / 10%);
+      --shadow-lg:     0 16px 40px rgb(0 0 0 / 12%);
+      --font:          "Inter", "Segoe UI", system-ui, sans-serif;
+      --font-mono:     "JetBrains Mono", "Fira Code", monospace;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0d0d1a; --surface: #14142b; --surface-2: #1e1b4b;
+        --border: #2d2b5a; --text: #f0efff; --muted: #9ca3af;
+        --code-bg: #0f0e26; --code-fg: #c7d2fe;
+      }
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { color: var(--primary-dark); }
+
+    /* ── Nav ── */
+    .nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 2rem; border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 10;
+      background: color-mix(in srgb, var(--bg) 85%, transparent);
+      backdrop-filter: blur(10px);
+    }
+    .nav-brand {
+      font-weight: 700; font-size: 1.1rem;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .nav-badge {
+      font-size: 0.72rem; font-weight: 600; letter-spacing: 0.05em;
+      background: var(--surface-2); color: var(--primary);
+      padding: 0.2rem 0.6rem; border-radius: var(--radius-pill);
+    }
+
+    /* ── Hero ── */
+    .hero {
+      text-align: center; padding: 5rem 2rem 4rem;
+      background: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--primary) 8%, transparent) 0%, transparent 70%);
+    }
+    .hero-tag {
+      display: inline-block; margin-bottom: 1.25rem;
+      padding: 0.3rem 0.9rem; border-radius: var(--radius-pill);
+      background: var(--surface-2); color: var(--primary);
+      font-size: 0.8rem; font-weight: 600; letter-spacing: 0.04em;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.25rem); font-weight: 800;
+      letter-spacing: -0.03em; margin-bottom: 1rem; line-height: 1.1;
+    }
+    .gradient {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      max-width: 500px; margin: 0 auto 2rem; color: var(--muted); font-size: 1.05rem;
+    }
+    .btn-row { display: flex; justify-content: center; gap: 0.75rem; flex-wrap: wrap; }
+    .btn {
+      padding: 0.6rem 1.3rem; border-radius: var(--radius-pill);
+      font-weight: 600; font-size: 0.95rem; cursor: pointer; border: 2px solid transparent;
+      transition: transform 150ms, box-shadow 150ms, background 150ms;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-dark); color: #fff; }
+    .btn-ghost { background: transparent; border-color: var(--border); color: var(--text); }
+    .btn-ghost:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* ── Endpoints card grid ── */
+    .section { padding: 3.5rem 2rem; }
+    .section-inner { max-width: 900px; margin: 0 auto; }
+    .section-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.4rem; }
+    .section-sub { color: var(--muted); margin-bottom: 2rem; }
+
+    .endpoint-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
+    .endpoint-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 1.4rem;
+      display: flex; flex-direction: column; gap: 0.6rem;
+      transition: transform 200ms, box-shadow 200ms, border-color 200ms;
+    }
+    .endpoint-card:hover {
+      transform: translateY(-3px); box-shadow: var(--shadow-md);
+      border-color: color-mix(in srgb, var(--primary) 40%, transparent);
+    }
+    .method-badge {
+      display: inline-block; padding: 0.15rem 0.6rem;
+      border-radius: var(--radius-pill); font-size: 0.72rem; font-weight: 700;
+      font-family: var(--font-mono); letter-spacing: 0.05em; width: fit-content;
+    }
+    .method-get { background: #d1fae5; color: #065f46; }
+    .endpoint-path { font-family: var(--font-mono); font-size: 0.9rem; font-weight: 600; }
+    .endpoint-desc { color: var(--muted); font-size: 0.875rem; }
+    .endpoint-try {
+      margin-top: auto; font-size: 0.8rem; font-weight: 600;
+      color: var(--primary); cursor: pointer; border: none;
+      background: none; padding: 0; text-align: left;
+    }
+    .endpoint-try:hover { color: var(--primary-dark); }
+
+    /* ── Response preview ── */
+    .response-section { padding: 0 2rem 3.5rem; }
+    .response-section .section-inner { max-width: 900px; margin: 0 auto; }
+    .response-box {
+      background: var(--code-bg); color: var(--code-fg);
+      font-family: var(--font-mono); font-size: 0.875rem;
+      padding: 1.5rem; border-radius: var(--radius-lg);
+      min-height: 5rem; white-space: pre; overflow-x: auto;
+      box-shadow: var(--shadow-lg);
+    }
+    .response-label {
+      font-size: 0.8rem; font-weight: 600; color: var(--muted);
+      margin-bottom: 0.5rem; letter-spacing: 0.04em; text-transform: uppercase;
+    }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: auto; border-top: 1px solid var(--border);
+      padding: 1.5rem 2rem; text-align: center;
+      color: var(--muted); font-size: 0.85rem;
+    }
+
+    @media (max-width: 600px) {
+      .nav { padding: 0.75rem 1rem; }
+      .hero { padding: 3rem 1rem 2.5rem; }
+      .section, .response-section { padding-inline: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-brand">
+      🏠 Flask App
+      <span class="nav-badge">HomeHost</span>
+    </div>
+    <a href="https://flask.palletsprojects.com/" target="_blank" rel="noopener" style="font-size:0.875rem; color:var(--muted)">
+      Flask docs ↗
+    </a>
+  </nav>
+
+  <section class="hero">
+    <span class="hero-tag">⚡ Self-Hosted · Flask</span>
+    <h1>Your <span class="gradient">Flask app</span><br/>is live.</h1>
+    <p>
+      Edit <code>app.py</code> and your Jinja2 templates — changes reload
+      automatically while HomeHost is watching.
+    </p>
+    <div class="btn-row">
+      <a href="#endpoints" class="btn btn-primary">Browse endpoints ↓</a>
+      <a href="https://flask.palletsprojects.com/quickstart/" class="btn btn-ghost" target="_blank" rel="noopener">Flask docs →</a>
+    </div>
+  </section>
+
+  <section class="section" id="endpoints">
+    <div class="section-inner">
+      <h2 class="section-title">API Endpoints</h2>
+      <p class="section-sub">Click any endpoint to fetch it live.</p>
+      <div class="endpoint-grid">
+
+        <div class="endpoint-card">
+          <span class="method-badge method-get">GET</span>
+          <span class="endpoint-path">/</span>
+          <p class="endpoint-desc">Serves this Jinja2 template — your app's front page.</p>
+          <button class="endpoint-try" data-url="/">Try it →</button>
+        </div>
+
+        <div class="endpoint-card">
+          <span class="method-badge method-get">GET</span>
+          <span class="endpoint-path">/api/hello</span>
+          <p class="endpoint-desc">Returns a JSON greeting — good starting point for your API.</p>
+          <button class="endpoint-try" data-url="/api/hello">Try it →</button>
+        </div>
+
+        <div class="endpoint-card">
+          <span class="method-badge method-get">GET</span>
+          <span class="endpoint-path">/api/status</span>
+          <p class="endpoint-desc">Runtime status — Python version, platform info.</p>
+          <button class="endpoint-try" data-url="/api/status">Try it →</button>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="response-section">
+    <div class="section-inner">
+      <p class="response-label">Response Preview</p>
+      <div class="response-box" id="response-box">// Click an endpoint above to see the response here.</div>
+    </div>
+  </section>
+
+  <footer>
+    Built with <a href="https://flask.palletsprojects.com/" target="_blank" rel="noopener">Flask</a>
+    · Hosted by <a href="https://github.com/homehost-dev/homehost" target="_blank" rel="noopener">HomeHost</a>
+  </footer>
+
+  <script>
+    document.querySelectorAll(".endpoint-try").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const url = btn.dataset.url;
+        const box = document.getElementById("response-box");
+        box.textContent = `Fetching ${url}…`;
+        try {
+          const res = await fetch(url, { headers: { Accept: "application/json" } });
+          const ct = res.headers.get("content-type") || "";
+          if (ct.includes("json")) {
+            const data = await res.json();
+            box.textContent = JSON.stringify(data, null, 2);
+          } else {
+            box.textContent = `[HTML response — status ${res.status}]\n\nOpen ${url} directly in your browser to view it.`;
+          }
+        } catch (err) {
+          box.textContent = `Error: ${err.message}`;
+        }
+      });
+    });
+  </script>
+
+</body>
+</html>

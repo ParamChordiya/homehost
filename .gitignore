@@ -1,0 +1,100 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+*.pyo
+.venv/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.python-version
+
+# Testing
+.tox/
+.nox/
+.cache
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.hypothesis/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# HomeHost runtime data
+.homehost/
+caddy_data/
+cloudflared_config/
+
+# Caddy
+Caddyfile.local
+caddy.log
+
+# Secrets and environment
+.env
+.env.*
+*.key
+*.pem
+*.cert
+*.csr
+
+# Logs
+*.log
+logs/
+
+# Node.js (for template testing)
+node_modules/
+.npm
+.yarn/
+.pnp.*
+
+# Build artifacts
+dist/
+build/
+out/
+.next/
+.nuxt/
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+desktop.ini

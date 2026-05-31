@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<!-- ✏️ Edit this file to customize your homepage -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Welcome to my HomeHost site — served right from my laptop." />
+  <title>{{project_name}}</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ════════════════════════════════ HEADER ════════════════════════════════ -->
+  <header class="site-header">
+    <nav class="nav">
+      <span class="nav-logo">🏠 {{project_name}}</span>
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#about">About</a></li>
+        <li>
+          <button id="theme-toggle" class="btn-icon" aria-label="Toggle dark mode">
+            🌙
+          </button>
+        </li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- ════════════════════════════════  HERO  ════════════════════════════════ -->
+  <section class="hero">
+    <div class="hero-inner">
+      <span class="hero-badge">⚡ Self-Hosted</span>
+      <h1 class="hero-headline">
+        Your site,<br />
+        <span class="gradient-text">your rules.</span>
+      </h1>
+      <p class="hero-subtitle">
+        Served directly from your laptop via HomeHost — zero cloud bills,
+        zero vendor lock-in, and total control over your data.
+      </p>
+      <div class="hero-actions">
+        <a href="#features" class="btn btn-primary">Explore ↓</a>
+        <a
+          href="https://github.com/homehost-dev/homehost"
+          class="btn btn-outline"
+          target="_blank"
+          rel="noopener"
+          >View on GitHub</a
+        >
+      </div>
+
+      <!-- Live stats banner -->
+      <div class="stats-row">
+        <div class="stat">
+          <span class="stat-number" id="counter-visits">0</span>
+          <span class="stat-label">Visits today</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-number">100%</span>
+          <span class="stat-label">Uptime</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-number">0 ms</span>
+          <span class="stat-label">Latency locally</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Decorative blobs -->
+    <div class="blob blob-1" aria-hidden="true"></div>
+    <div class="blob blob-2" aria-hidden="true"></div>
+  </section>
+
+  <!-- ════════════════════════════════ FEATURES ════════════════════════════════ -->
+  <section class="features" id="features">
+    <div class="container">
+      <h2 class="section-title">Why self-host?</h2>
+      <p class="section-subtitle">
+        Skip the SaaS middleman. You already own the hardware.
+      </p>
+
+      <div class="cards-grid">
+
+        <article class="card">
+          <div class="card-icon">🔒</div>
+          <h3 class="card-title">Private by default</h3>
+          <p class="card-body">
+            Your data never leaves your machine unless you want it to.
+            No third-party analytics, no hidden data sharing — ever.
+          </p>
+          <a href="#about" class="card-link">Learn more →</a>
+        </article>
+
+        <article class="card card--accent">
+          <div class="card-icon">⚙️</div>
+          <h3 class="card-title">Zero-config deploy</h3>
+          <p class="card-body">
+            Drop your files in a folder, run <code>homehost start</code>,
+            and get a live URL with automatic HTTPS in under 30 seconds.
+          </p>
+          <a href="#about" class="card-link">Learn more →</a>
+        </article>
+
+        <article class="card">
+          <div class="card-icon">💸</div>
+          <h3 class="card-title">Actually free</h3>
+          <p class="card-body">
+            No subscriptions, no per-seat fees. If you already have
+            internet and a machine, you already have a web server.
+          </p>
+          <a href="#about" class="card-link">Learn more →</a>
+        </article>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════  ABOUT  ════════════════════════════════ -->
+  <section class="about" id="about">
+    <div class="container about-inner">
+      <div class="about-text">
+        <h2>Built with HomeHost</h2>
+        <p>
+          This page is served from a laptop using
+          <strong>HomeHost</strong> — an open-source tool that turns any
+          computer into a proper web server with automatic HTTPS, port
+          forwarding, and a slick terminal UI.
+        </p>
+        <p>
+          Edit <code>index.html</code>, save the file, and your site
+          reloads automatically. No build step, no deployment pipeline.
+        </p>
+        <a
+          href="https://github.com/homehost-dev/homehost"
+          class="btn btn-primary"
+          target="_blank"
+          rel="noopener"
+          >Get HomeHost →</a
+        >
+      </div>
+      <div class="about-visual" aria-hidden="true">
+        <pre class="code-block">$ homehost start .
+
+  ✓ Detected: static site
+  ✓ Serving on http://localhost:8080
+  ✓ Public URL: https://abc.trycloudflare.com
+  ✓ Watching for changes…
+</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════ FOOTER ════════════════════════════════ -->
+  <footer class="site-footer">
+    <p>
+      Powered by
+      <a href="https://github.com/homehost-dev/homehost" target="_blank" rel="noopener"
+        >HomeHost</a
+      >
+      · Self-hosted with ❤️
+    </p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
