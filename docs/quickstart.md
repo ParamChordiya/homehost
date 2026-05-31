@@ -355,4 +355,4 @@ homehost new --help              # Available templates
 - [Architecture Guide](architecture.md) — deep dive into how HomeHost works
 - [Security Guide](security.md) — what HomeHost secures and what it doesn't
 - [Troubleshooting Guide](troubleshooting.md) — error codes and common fixes
-- [GitHub Issues](https://github.com/homehost-dev/homehost/issues) — report bugs or request features
+- [GitHub Issues](https://github.com/ParamChordiya/homehost/issues) — report bugs or request features

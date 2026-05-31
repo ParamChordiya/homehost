@@ -411,7 +411,7 @@ Verify that HomeHost detects the type correctly, starts the server, and the site
 
 ## Reporting Bugs
 
-Open an issue at [github.com/homehost-dev/homehost/issues](https://github.com/homehost-dev/homehost/issues) and use the **Bug Report** template. Please include:
+Open an issue at [github.com/ParamChordiya/homehost/issues](https://github.com/ParamChordiya/homehost/issues) and use the **Bug Report** template. Please include:
 
 - HomeHost version (`homehost version`)
 - OS and Python version

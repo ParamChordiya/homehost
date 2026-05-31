@@ -394,12 +394,198 @@ def start(
         handle_error(exc, "HH-002")
 
 
-@app.command(name="serve", hidden=True)
-def serve_alias(
-    project: Optional[str] = typer.Argument(None, help="Project name (default: current directory)."),
+@app.command()
+def serve(
+    path: Optional[Path] = typer.Argument(None, help="Directory to serve (default: current directory)."),
+    port: Optional[int] = typer.Option(None, "--port", "-p", help="Port to listen on (default: auto-pick 8080-8099)."),
+    public: bool = typer.Option(False, "--public", help="Start a free Cloudflare Tunnel for public internet access."),
+    type_: Optional[str] = typer.Option(None, "--type", "-t", metavar="TYPE",
+                                         help="Force project type: static, flask, fastapi, django, nextjs, react, node."),
+    no_reload: bool = typer.Option(False, "--no-reload", help="Disable file-change auto-reload."),
+    name: Optional[str] = typer.Option(None, "--name", "-n", help="Project name (default: directory name)."),
 ) -> None:
-    """Alias for 'start'. Start the server for a project."""
-    start(project)
+    """Detect, register, and serve a project directory in one step.
+
+    This is the recommended first-time command. Press Ctrl+C to stop.
+
+    Examples:
+
+      homehost serve .
+      homehost serve ~/my-site --public
+      homehost serve . --port 3000 --type flask
+    """
+    import signal
+
+    try:
+        from homehost.core.config import (
+            load_project_config, save_project_config, ProjectConfig,
+            ProjectServerConfig, ProjectNetworkConfig, ProjectWatcherConfig,
+            ProjectSecurityConfig, projects_dir,
+        )
+        from homehost.core.project import detect_project_type, validate_project_directory, ProjectType
+        from homehost.core.detector import get_local_ip
+        from homehost.utils.network import find_free_port, is_port_in_use
+
+        target = Path(path or Path.cwd()).resolve()
+        ok, err = validate_project_directory(target)
+        if not ok:
+            err_console.print(f"[red]Cannot serve directory:[/red] {err}")
+            raise typer.Exit(1)
+
+        # ── Detect project type ───────────────────────────────────────────────
+        if type_:
+            try:
+                detected_type = ProjectType(type_.lower())
+                detect_label = f"[dim](forced)[/dim]"
+            except ValueError:
+                err_console.print(
+                    f"[red]Unknown project type '{type_}'.[/red] "
+                    "Valid: static, flask, fastapi, django, nextjs, react, node, custom"
+                )
+                raise typer.Exit(1)
+        else:
+            with console.status("[blue]Detecting project type…[/blue]"):
+                result = detect_project_type(target)
+            detected_type = result.project_type
+            detect_label = f"[dim]({result.reason})[/dim]"
+
+        console.print(f"  [green]✓[/green] Detected: [bold]{detected_type.label}[/bold] {detect_label}")
+
+        # ── Pick or validate port ─────────────────────────────────────────────
+        project_name = name or target.name
+        chosen_port: int
+        if port:
+            if is_port_in_use(port):
+                err_console.print(
+                    f"[red]Port {port} is already in use.[/red] "
+                    "Try a different port with --port, or omit --port to auto-pick."
+                )
+                raise typer.Exit(1)
+            chosen_port = port
+        else:
+            chosen_port = find_free_port(8080, 8099)
+
+        console.print(f"  [green]✓[/green] Port: [bold]{chosen_port}[/bold]")
+
+        # ── Register project (upsert) ─────────────────────────────────────────
+        cfg = ProjectConfig()
+        cfg.name = project_name
+        cfg.type = detected_type.value
+        cfg.path = str(target)
+        cfg.server = ProjectServerConfig()
+        cfg.server.port = chosen_port
+        cfg.server.auto_start = True
+        cfg.server.build_command = detected_type.default_build_command
+        cfg.server.start_command = detected_type.default_start_command
+        cfg.network = ProjectNetworkConfig()
+        cfg.network.access = "public" if public else "local"
+        cfg.security = ProjectSecurityConfig()
+        cfg.watcher = ProjectWatcherConfig()
+        cfg.watcher.enabled = not no_reload
+        save_project_config(cfg)
+
+        # ── Start server ──────────────────────────────────────────────────────
+        pm = _get_process_manager()
+
+        if detected_type == ProjectType.STATIC or not cfg.server.start_command:
+            command = [sys.executable, "-m", "http.server", str(chosen_port),
+                       "--directory", str(target), "--bind", "0.0.0.0"]
+        else:
+            command = cfg.server.start_command.split()
+
+        log_file = _log_dir() / f"{project_name}.log"
+        with console.status("[blue]Starting server…[/blue]"):
+            pm.start(project_name, command, cwd=target, log_file=log_file)
+            time.sleep(1.5)
+
+        if not pm.is_running(project_name):
+            err_console.print(
+                Panel(
+                    "[red]Server process exited immediately.[/red]\n\n"
+                    f"Check logs for details:\n[dim]{log_file}[/dim]\n\n"
+                    f"Or run: [bold]homehost logs {project_name}[/bold]",
+                    title="[red]Start Failed[/red]",
+                    border_style="red",
+                )
+            )
+            raise typer.Exit(1)
+
+        local_url = f"http://localhost:{chosen_port}"
+        lan_url = f"http://{get_local_ip()}:{chosen_port}"
+
+        # ── Optional tunnel ───────────────────────────────────────────────────
+        public_url = ""
+        if public:
+            from homehost.core.config import load_global_config
+            gcfg = load_global_config()
+            cloudflared = gcfg.server.cloudflared_path or "cloudflared"
+            if not shutil.which(cloudflared) and cloudflared == "cloudflared":
+                console.print(
+                    "  [yellow]⚠[/yellow]  cloudflared not installed — skipping public tunnel.\n"
+                    "     Install it: [bold]homehost doctor[/bold] will guide you."
+                )
+            else:
+                with console.status("[blue]Starting Cloudflare Tunnel…[/blue]"):
+                    try:
+                        from homehost.network.tunnel import TunnelManager
+                        tm = TunnelManager(cloudflared, pm)
+                        info = tm.start_quick_tunnel(f"{project_name}_tunnel", chosen_port)
+                        public_url = info.url
+                        cfg.network.subdomain = public_url
+                        save_project_config(cfg)
+                        console.print(f"  [green]✓[/green] Tunnel: [bold blue]{public_url}[/bold blue]")
+                    except Exception as exc:
+                        console.print(f"  [yellow]⚠[/yellow]  Tunnel failed: {exc}")
+
+        # ── Status panel ──────────────────────────────────────────────────────
+        body = f"  [bold]Local:[/bold]    {local_url}\n"
+        body += f"  [bold]Network:[/bold]  {lan_url}  [dim](devices on same Wi-Fi)[/dim]\n"
+        if public_url:
+            body += f"  [bold]Public:[/bold]   [bold blue]{public_url}[/bold blue]\n"
+        body += f"\n  [dim]Logs: {log_file}[/dim]"
+        body += "\n\n  Press [bold]Ctrl+C[/bold] to stop."
+
+        console.print(
+            Panel(body, title=f"[bold green]✓  {project_name} is running[/bold green]", border_style="green")
+        )
+        _print_qr(public_url or local_url)
+
+        # ── File watcher ──────────────────────────────────────────────────────
+        watcher = None
+        if not no_reload and detected_type == ProjectType.STATIC:
+            try:
+                from homehost.deploy.watcher import ProjectWatcher
+
+                def _on_change(paths: list) -> None:
+                    console.print(f"  [blue]♻[/blue]  File change detected — reloading…")
+
+                watcher = ProjectWatcher(target, _on_change)
+                watcher.start()
+            except Exception:
+                pass  # watcher is optional
+
+        # ── Block until Ctrl+C ────────────────────────────────────────────────
+        try:
+            while pm.is_running(project_name):
+                time.sleep(1)
+            console.print(f"\n[yellow]Server process stopped unexpectedly.[/yellow] "
+                          f"Check logs: [dim]{log_file}[/dim]")
+        except KeyboardInterrupt:
+            console.print(f"\n[yellow]Stopping {project_name}…[/yellow]")
+            pm.stop(project_name)
+            if public_url:
+                pm.stop(f"{project_name}_tunnel")
+            if watcher:
+                watcher.stop()
+            console.print("[green]Stopped.[/green]")
+
+    except typer.Exit:
+        raise
+    except RuntimeError as exc:
+        err_console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(1)
+    except Exception as exc:
+        handle_error(exc, "HH-014")
 
 
 # ── stop ───────────────────────────────────────────────────────────────────────
@@ -1036,6 +1222,82 @@ def update() -> None:
         raise typer.Exit(1)
     except Exception as exc:
         handle_error(exc, "HH-013")
+
+
+# ── setup ─────────────────────────────────────────────────────────────────────
+
+@app.command()
+def setup() -> None:
+    """Check your system and install any missing dependencies (Caddy, cloudflared).
+
+    Run this once after installing HomeHost to make sure everything is ready.
+    """
+    doctor()
+
+
+# ── new ────────────────────────────────────────────────────────────────────────
+
+@app.command()
+def new(
+    template: str = typer.Argument(..., help="Template type: static, flask, fastapi, nextjs, react."),
+    project_name: str = typer.Argument(..., help="Name for the new project (also used as directory name)."),
+    output_dir: Optional[Path] = typer.Option(None, "--dir", "-d",
+                                               help="Parent directory (default: current directory)."),
+) -> None:
+    """Scaffold a new project from a starter template.
+
+    Examples:
+
+      homehost new static my-portfolio
+      homehost new flask my-api
+      homehost new fastapi my-backend
+    """
+    try:
+        from homehost.deploy.scaffold import scaffold_project, TemplateType
+
+        try:
+            tmpl = TemplateType(template.lower())
+        except ValueError:
+            err_console.print(
+                f"[red]Unknown template '{template}'.[/red] "
+                "Available: static, flask, fastapi, nextjs, react"
+            )
+            raise typer.Exit(1)
+
+        parent = (output_dir or Path.cwd()).resolve()
+        target = parent / project_name
+
+        if target.exists():
+            err_console.print(
+                f"[red]Directory '{target}' already exists.[/red] "
+                "Choose a different name or delete it first."
+            )
+            raise typer.Exit(1)
+
+        target.mkdir(parents=True)
+
+        with console.status(f"[blue]Scaffolding {tmpl.value} template…[/blue]"):
+            created = scaffold_project(tmpl, target, project_name)
+
+        console.print(
+            Panel(
+                f"[green]Created {len(created)} files[/green] in [bold]{target}[/bold]\n\n"
+                f"Next steps:\n"
+                f"  cd {project_name}\n"
+                f"  homehost serve .",
+                title=f"[green]✓  {project_name} created[/green]",
+                border_style="green",
+            )
+        )
+        for f in created[:10]:
+            console.print(f"  [dim]{f.relative_to(target)}[/dim]")
+        if len(created) > 10:
+            console.print(f"  [dim]… and {len(created) - 10} more[/dim]")
+
+    except typer.Exit:
+        raise
+    except Exception as exc:
+        handle_error(exc, "HH-015")
 
 
 # ── Entry point ────────────────────────────────────────────────────────────────

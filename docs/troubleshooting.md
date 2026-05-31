@@ -1,6 +1,6 @@
 # Troubleshooting Guide
 
-This guide covers the most common issues users encounter with HomeHost, organized by error code and by operating system. If you can't find your issue here, run `homehost doctor` and paste the output into a [GitHub Issue](https://github.com/homehost-dev/homehost/issues).
+This guide covers the most common issues users encounter with HomeHost, organized by error code and by operating system. If you can't find your issue here, run `homehost doctor` and paste the output into a [GitHub Issue](https://github.com/ParamChordiya/homehost/issues).
 
 ---
 
@@ -464,7 +464,7 @@ homehost logs <project-name> --tunnel  # cloudflared log only
 
 **2. Run `homehost doctor`** — it fixes or diagnoses most environment issues automatically.
 
-**3. Search existing GitHub Issues** — [github.com/homehost-dev/homehost/issues](https://github.com/homehost-dev/homehost/issues). Your issue may already be reported and have a fix.
+**3. Search existing GitHub Issues** — [github.com/ParamChordiya/homehost/issues](https://github.com/ParamChordiya/homehost/issues). Your issue may already be reported and have a fix.
 
 **4. Open a new GitHub Issue** — use the Bug Report template and include:
    - The exact command you ran

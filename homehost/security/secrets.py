@@ -54,7 +54,7 @@ def verify_password(password: str, hash: str) -> bool:
 # ── Password generation ────────────────────────────────────────────────────────
 
 # Characters considered "safe" for passwords displayed in terminals and URLs
-_PASSWORD_ALPHABET = string.ascii_letters + string.digits + "!@#$%^&*-_=+"
+_PASSWORD_ALPHABET = string.ascii_letters + string.digits + "!@#$%^&*_=+"
 
 
 def generate_strong_password(length: int = 16) -> str:

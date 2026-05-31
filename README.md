@@ -9,105 +9,122 @@
 
 **Turn your laptop into a web server in 3 minutes.**
 
-[![CI](https://img.shields.io/github/actions/workflow/status/homehost-dev/homehost/ci.yml?branch=main&label=CI&logo=github)](https://github.com/homehost-dev/homehost/actions)
+[![CI](https://img.shields.io/github/actions/workflow/status/ParamChordiya/homehost/ci.yml?branch=main&label=CI&logo=github)](https://github.com/ParamChordiya/homehost/actions)
 [![PyPI](https://img.shields.io/pypi/v/homehost?logo=pypi&logoColor=white)](https://pypi.org/project/homehost/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%20|%203.11%20|%203.12-blue?logo=python&logoColor=white)](https://pypi.org/project/homehost/)
-[![Downloads](https://img.shields.io/pypi/dm/homehost)](https://pypi.org/project/homehost/)
 
-HomeHost is an open-source CLI/TUI tool that lets you host websites and web apps directly from your laptop — no cloud account, no credit card, no DevOps degree required. It automatically configures [Caddy](https://caddyserver.com/) as your web server and [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) for secure public access, wrapping everything in a beautiful terminal dashboard.
+HomeHost is an open-source CLI tool that lets you host websites and web apps directly from your laptop — no cloud account, no credit card, no DevOps degree required. It auto-detects your project type, configures [Caddy](https://caddyserver.com/) as your web server, and optionally creates a free [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) so anyone on the internet can reach your site.
 
 ---
 
 ## The 3-Minute Golden Path
 
 ```bash
-# Install
+# 1. Install
 pip install homehost
 
-# Point it at your project
+# 2. (First time only) check your system
+homehost setup
+
+# 3. Point it at your project and serve
 cd ~/my-website
 homehost serve .
 
-# You'll see something like:
+# You'll see:
 #
-#  HomeHost v0.1.0
-#  ──────────────────────────────────────────────
-#  Local:    http://localhost:8080
-#  Public:   https://proud-tiger-42.trycloudflare.com
-#  Dashboard http://localhost:9111
-#  ──────────────────────────────────────────────
-#  Detected: Static HTML site
-#  Status:   Running  •  Auto-reload: ON
+#  ✓ Detected: Static HTML/CSS/JS (Found index.html)
+#  ✓ Port: 8080
 #
-#  Scan to open on your phone:
-#  █▀▀▀▀▀█ ▀▀█▄ ▀ █▀▀▀▀▀█
-#  █ ███ █ ▄▀▀ ▄▀ █ ███ █
-#  █ ▀▀▀ █ ▀█▄▄▀▀ █ ▀▀▀ █
-#  ▀▀▀▀▀▀▀ ▀ ▀ █▄ ▀▀▀▀▀▀▀
+#  ╭──────────────── ✓  my-website is running ────────────────╮
+#  │   Local:    http://localhost:8080                        │
+#  │   Network:  http://192.168.1.42:8080  (same Wi-Fi)      │
+#  │                                                          │
+#  │   Press Ctrl+C to stop.                                  │
+#  ╰──────────────────────────────────────────────────────────╯
+#
+#  [QR code for mobile access]
 ```
 
-Share the public URL with anyone in the world. They open it in a browser. That's it.
+Want it public? Add `--public`:
 
----
+```bash
+homehost serve . --public
 
-## Features
+#  ╭──────────────── ✓  my-website is running ────────────────╮
+#  │   Local:    http://localhost:8080                        │
+#  │   Network:  http://192.168.1.42:8080                     │
+#  │   Public:   https://proud-tiger-42.trycloudflare.com     │
+#  ╰──────────────────────────────────────────────────────────╯
+```
 
-| | Feature | Details |
-|---|---|---|
-| ⚡ | **Zero-config setup** | Detects your project type automatically and configures everything |
-| 🖥️ | **macOS and Windows** | Full support for both platforms, with native installers for dependencies |
-| 🗂️ | **Multi-framework support** | Static sites, Next.js, React, Express, Flask, FastAPI, Django |
-| 🔒 | **Free HTTPS** | End-to-end encryption via Cloudflare Tunnel — no certificates to manage |
-| 🖼️ | **Built-in TUI dashboard** | Real-time logs, request traffic, and process status in your terminal |
-| 🌐 | **Web dashboard** | Full browser dashboard at `http://localhost:9111` with request inspector |
-| ♻️ | **Auto-reload** | Watches your files and restarts the server on changes |
-| 🛡️ | **Security headers** | CSP, HSTS, X-Frame-Options, and rate limiting configured out of the box |
-| 📦 | **Multi-project support** | Run multiple sites simultaneously on different ports |
-| 📱 | **QR code sharing** | Instantly scan to preview on a mobile device |
+Share the public URL with anyone. It works immediately, with HTTPS, from any device.
 
 ---
 
 ## Installation
 
+### macOS / Linux
+
 ```bash
-# Primary (recommended)
 pip install homehost
-
-# With pipx for isolated install
-pipx install homehost
-
-# macOS (Homebrew) — coming soon
-brew install homehost
-
-# Windows (Chocolatey) — coming soon
-choco install homehost
 ```
 
-HomeHost automatically installs [Caddy](https://caddyserver.com/) and [cloudflared](https://github.com/cloudflare/cloudflared) on first run — you don't need to install them yourself.
+### Windows
 
-**Requirements:**
-- Python 3.10 or higher
-- macOS 12+ or Windows 10/11
-- An internet connection (for tunnel setup)
+```powershell
+pip install homehost
+```
+
+> **Windows PATH note:** If `homehost` isn't found after install, run:
+> ```powershell
+> python -m homehost --version
+> ```
+> If that works, add Python's Scripts folder to your PATH:
+> ```powershell
+> # Find the Scripts path
+> python -c "import sysconfig; print(sysconfig.get_path('scripts'))"
+> # Then add that path to your System Environment Variables → PATH
+> ```
+> Or install with [pipx](https://pypa.github.io/pipx/) which handles PATH automatically:
+> ```powershell
+> pip install pipx
+> pipx install homehost
+> ```
+
+**Requirements:** Python 3.10+, macOS 12+ or Windows 10/11.
+
+HomeHost automatically installs [Caddy](https://caddyserver.com/) and [cloudflared](https://github.com/cloudflare/cloudflared) when you first run `homehost setup`.
 
 ---
 
 ## Quick Start
 
-### Step 1 — Install HomeHost
+### Step 1 — Install
 
 ```bash
 pip install homehost
 ```
 
-### Step 2 — Run the setup wizard (first time only)
+### Step 2 — Check your system (first time only)
 
 ```bash
 homehost setup
 ```
 
-HomeHost will check for dependencies, install Caddy and cloudflared if they're missing, and write a config file to `~/.homehost/config.toml`. This takes about 60 seconds.
+This runs `homehost doctor` to verify your environment and show how to install Caddy and cloudflared if they're missing. Output looks like:
+
+```
+  ✓  python: Python 3.12.2
+  ✓  internet: Internet reachable
+  ✓  disk: 20.0 GB free
+  ✓  node: Node.js 22.1.0
+  ○  caddy: Caddy not found
+     → Install: brew install caddy  (macOS)
+     → Install: winget install CaddyServer.Caddy  (Windows)
+  ○  cloudflared: not found (needed for --public tunnels)
+     → Install: brew install cloudflared  (macOS)
+```
 
 ### Step 3 — Serve your project
 
@@ -116,225 +133,233 @@ cd /path/to/your/project
 homehost serve .
 ```
 
-HomeHost detects your project type (static site, Node.js app, Python app) and starts the appropriate server. You'll see the TUI dashboard launch in your terminal with the local URL.
+HomeHost auto-detects your project type and starts the right server. Press **Ctrl+C** to stop.
 
-### Step 4 — Go public
+### Step 4 — Go public (optional)
 
 ```bash
-# Already running? Open the dashboard or press 't' in the TUI to toggle the tunnel.
-# Or pass --public when you start:
 homehost serve . --public
 ```
 
-A Cloudflare Tunnel URL like `https://proud-tiger-42.trycloudflare.com` is generated and displayed with a QR code. Share it freely — it works immediately, with HTTPS, from any device on earth.
+Creates a free `https://*.trycloudflare.com` URL (no account required). Share it anywhere.
 
 ### Step 5 — Open the web dashboard
 
-Navigate to `http://localhost:9111` in your browser. You'll find a full request log, live traffic graphs, project configuration, and one-click tunnel toggle.
+Navigate to **http://localhost:9111** while a project is running. You'll find project status, request logs, and traffic graphs.
 
 ---
 
 ## CLI Reference
 
+### `homehost serve` — the main command
+
+```
+homehost serve [PATH] [OPTIONS]
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `PATH` | `.` (current dir) | Project directory to serve |
+| `--port`, `-p` | auto (8080–8099) | Port to listen on |
+| `--public` | off | Start a free Cloudflare Tunnel for internet access |
+| `--type`, `-t` | auto-detected | Force project type: `static`, `flask`, `fastapi`, `django`, `nextjs`, `react`, `node` |
+| `--name`, `-n` | directory name | Override the project display name |
+| `--no-reload` | off | Disable file-change auto-reload |
+
+**Examples:**
+
+```bash
+homehost serve .                              # serve current directory
+homehost serve ~/my-site                      # serve a specific path
+homehost serve . --public                     # with public tunnel
+homehost serve . --port 3000                  # on a specific port
+homehost serve . --type flask                 # force project type
+homehost serve . --public --no-reload         # public, no auto-reload
+```
+
+### All commands
+
 | Command | Description |
 |---|---|
-| `homehost serve <path>` | Serve a project from the given directory |
-| `homehost serve <path> --port <n>` | Use a specific port (default: 8080) |
-| `homehost serve <path> --public` | Start with Cloudflare Tunnel enabled immediately |
-| `homehost serve <path> --no-reload` | Disable file watching / auto-reload |
-| `homehost setup` | Run the interactive first-time setup wizard |
-| `homehost doctor` | Diagnose your installation and environment |
-| `homehost list` | List all running HomeHost projects |
-| `homehost stop <name>` | Stop a running project by name |
-| `homehost stop --all` | Stop all running projects |
-| `homehost logs <name>` | Stream logs for a project |
-| `homehost config` | Open the config file in your default editor |
+| `homehost serve [path]` | **Main command.** Detect, register, and start serving a directory. |
+| `homehost serve [path] --public` | Start with a free Cloudflare Tunnel (public internet access) |
+| `homehost setup` | Check system dependencies and show how to install missing ones |
+| `homehost doctor` | Detailed system diagnostics |
 | `homehost new <template> <name>` | Scaffold a new project from a starter template |
-| `homehost update` | Update HomeHost and its dependencies |
-| `homehost version` | Print version information |
-
-### `homehost serve` flags
-
-| Flag | Default | Description |
-|---|---|---|
-| `--port`, `-p` | `8080` | Local port to bind the web server to |
-| `--public` | `false` | Enable Cloudflare Tunnel on start |
-| `--no-reload` | `false` | Disable file watcher / auto-reload |
-| `--auth` | `false` | Prompt to set up HTTP Basic Auth |
-| `--name`, `-n` | directory name | Override the project display name |
-| `--env-file` | `.env` | Load environment variables from a file |
-| `--tui / --no-tui` | `--tui` | Show or hide the TUI dashboard |
-
----
-
-## Supported Project Types
-
-HomeHost auto-detects your project type and configures the right server. No `homehost.toml` required.
-
-| Type | Auto-detected by | Dev start command | Build command |
-|---|---|---|---|
-| **Static HTML** | `index.html` in root | Caddy file server | — |
-| **React (CRA / Vite)** | `package.json` + `react` dep | `npm run dev` | `npm run build` |
-| **Next.js** | `next.config.*` present | `npm run dev` | `npm run build` |
-| **Express / Node** | `package.json` + `express` dep | `node index.js` | — |
-| **Flask** | `app.py` + `flask` in requirements | `flask run` | — |
-| **FastAPI** | `main.py` + `fastapi` in requirements | `uvicorn main:app --reload` | — |
-| **Django** | `manage.py` present | `python manage.py runserver` | — |
-| **Generic Node** | `package.json` + `start` script | `npm start` | — |
-| **Generic Python** | `main.py` / `app.py` present | `python main.py` | — |
-
-If your project type isn't detected, you can specify it manually in `homehost.toml` at your project root:
-
-```toml
-[project]
-name = "my-app"
-type = "node"
-start_command = "node server.js"
-port = 3000
-```
+| `homehost start [project]` | Start a previously-registered project by name |
+| `homehost stop [project]` | Stop a running project |
+| `homehost stop --all` | Stop all running projects |
+| `homehost restart [project]` | Restart a project |
+| `homehost status` | Table view of all registered projects and their status |
+| `homehost list` | Short list of all projects |
+| `homehost logs [project]` | Stream logs for a project |
+| `homehost logs [project] --follow` | Live-tail logs |
+| `homehost dashboard` | Open the web dashboard in your browser |
+| `homehost config` | Show global config |
+| `homehost config [project]` | Show a project's config |
+| `homehost tunnel [project]` | Start/stop public tunnel for a registered project |
+| `homehost uninstall` | Remove all HomeHost data and config |
+| `homehost update` | Update HomeHost to the latest version |
+| `homehost --version` | Print version |
 
 ---
 
 ## Starter Templates
 
-Scaffold a new project instantly:
+Create a new project from scratch:
 
 ```bash
-homehost new static my-portfolio     # HTML/CSS/JS starter
-homehost new flask my-api            # Flask app with SQLite
-homehost new fastapi my-api          # FastAPI app with auto-docs
-homehost new nextjs my-site          # Next.js 14 app router
-homehost new react my-app            # React + Vite
+homehost new static my-portfolio    # HTML/CSS/JS starter
+homehost new flask my-api           # Flask app
+homehost new fastapi my-backend     # FastAPI app with auto-docs
+```
+
+Then serve it:
+
+```bash
+cd my-portfolio
+homehost serve .
+```
+
+---
+
+## Supported Project Types
+
+HomeHost auto-detects your project type — no config file needed.
+
+| Type | Detected by | How it's served |
+|---|---|---|
+| **Static HTML** | `index.html` in root | Python's built-in HTTP server (or Caddy if installed) |
+| **Flask** | `requirements.txt` contains `flask` | `flask run` via gunicorn |
+| **FastAPI** | `requirements.txt` contains `fastapi` | `uvicorn main:app` |
+| **Django** | `requirements.txt` contains `django` | `python manage.py runserver` |
+| **Next.js** | `package.json` with `next` dependency | `npx next start` |
+| **React** | `package.json` with `vite` or `react-scripts` | `npm start` |
+| **Node.js** | `package.json` without a specific framework | `npm start` |
+
+Override detection with `--type`:
+
+```bash
+homehost serve . --type flask
 ```
 
 ---
 
 ## Architecture
 
-HomeHost is a thin orchestration layer around battle-tested open source tools:
-
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Your Machine                             │
 │                                                                 │
-│  Your Files                                                     │
-│     │                                                           │
-│     ▼                                                           │
-│  ┌─────────────────┐     ┌──────────────────────────────────┐  │
-│  │  Your App       │────▶│  Caddy (web server / proxy)      │  │
-│  │  (Flask, Next,  │     │  - Serves static files           │  │
-│  │   React, etc.)  │     │  - Reverse-proxies app servers   │  │
-│  └─────────────────┘     │  - Security headers              │  │
-│                          │  - Rate limiting                  │  │
-│  ┌─────────────────┐     └──────────────┬───────────────────┘  │
-│  │  HomeHost TUI   │                    │                       │
-│  │  - Logs         │     ┌──────────────▼───────────────────┐  │
-│  │  - Status       │     │  cloudflared (Cloudflare Tunnel) │  │
-│  │  - Controls     │     │  - Encrypted outbound tunnel     │  │
-│  └─────────────────┘     │  - No inbound firewall ports     │  │
-│                          └──────────────┬───────────────────┘  │
-│  ┌─────────────────┐                    │                       │
-│  │  Web Dashboard  │                    │                       │
-│  │  localhost:9111 │                    │                       │
-│  └─────────────────┘                    │                       │
-└─────────────────────────────────────────┼───────────────────────┘
-                                          │
-                                          ▼
-                             ┌────────────────────────┐
-                             │  Cloudflare Edge       │
-                             │  trycloudflare.com     │
-                             │  - TLS termination     │
-                             │  - DDoS protection     │
-                             └────────────┬───────────┘
-                                          │
-                                          ▼
-                                   Public Internet
-                                  (anyone, anywhere)
+│  Your Files / App                                               │
+│        │                                                        │
+│        ▼                                                        │
+│  ┌──────────────────────────────────────────────┐              │
+│  │  Caddy (web server / reverse proxy)          │              │
+│  │  - Serves static files                       │              │
+│  │  - Proxies Flask / FastAPI / Node apps       │              │
+│  │  - Security headers (CSP, HSTS, etc.)        │              │
+│  │  - Rate limiting                             │              │
+│  └───────────────────────┬──────────────────────┘              │
+│                          │                                      │
+│  ┌───────────────────────▼──────────────────────┐              │
+│  │  cloudflared (optional, --public only)        │              │
+│  │  - Encrypted outbound tunnel to Cloudflare   │              │
+│  │  - No firewall ports opened                  │              │
+│  │  - Free *.trycloudflare.com URL              │              │
+│  └───────────────────────┬──────────────────────┘              │
+│                          │                                      │
+│  HomeHost CLI            │    Web Dashboard                     │
+│  homehost serve .   ─────┘    http://localhost:9111             │
+└─────────────────────────────────────────────────────────────────┘
+                           │
+                           ▼
+                    Public Internet
 ```
 
-The Cloudflare Tunnel creates an outbound-only encrypted connection — you never open firewall ports or expose your IP address directly.
+The tunnel creates an **outbound-only** encrypted connection — your IP address is never exposed directly.
 
 ---
 
 ## HomeHost vs. the Alternatives
 
-| Feature | HomeHost | Ngrok | LocalTunnel | Vercel |
+| | HomeHost | Ngrok | LocalTunnel | Vercel |
 |---|---|---|---|---|
 | **Price** | Free | Freemium | Free | Freemium |
 | **Runs on your machine** | ✅ | ✅ | ✅ | ❌ |
 | **HTTPS** | ✅ | ✅ | ✅ | ✅ |
-| **Custom domains** | ✅ (via Cloudflare) | 💰 Paid | ❌ | 💰 Paid |
-| **Static sites** | ✅ | ✅ | ✅ | ✅ |
-| **Node.js apps** | ✅ | ✅ | ✅ | ✅ |
+| **Custom domains** | ✅ via Cloudflare | 💰 Paid | ❌ | 💰 Paid |
 | **Python apps** | ✅ | ✅ | ✅ | ❌ |
-| **TUI dashboard** | ✅ | ❌ | ❌ | ❌ |
-| **Web dashboard** | ✅ | ✅ | ❌ | ✅ |
 | **Auto-detect project type** | ✅ | ❌ | ❌ | ✅ |
-| **Auto-reload** | ✅ | ❌ | ❌ | ✅ |
-| **Security headers** | ✅ Auto | ❌ Manual | ❌ | ✅ Auto |
-| **Rate limiting** | ✅ Auto | ❌ | ❌ | 💰 Paid |
 | **Exposes your IP** | ❌ | ✅ | ✅ | ❌ |
-| **Starter templates** | ✅ | ❌ | ❌ | ✅ |
 | **Open source** | ✅ MIT | ❌ | ✅ | ❌ |
 
 ---
 
-## Configuration
+## Troubleshooting
 
-HomeHost works with zero configuration. When you need to customize, there are two config files:
+### `homehost: command not found` (Windows)
 
-**Global config** — `~/.homehost/config.toml`
-```toml
-[defaults]
-port = 8080
-public = false
-auto_reload = true
-tui = true
+Python's Scripts directory isn't in your PATH. Fix it:
 
-[dashboard]
-port = 9111
+```powershell
+# Option A — use python -m
+python -m homehost serve .
 
-[security]
-rate_limit_rpm = 300
+# Option B — install with pipx (adds to PATH automatically)
+pip install pipx && pipx install homehost
+
+# Option C — find the Scripts path and add it to PATH manually
+python -c "import sysconfig; print(sysconfig.get_path('scripts'))"
 ```
 
-**Project config** — `homehost.toml` (in your project directory)
-```toml
-[project]
-name = "my-app"
-type = "flask"
-port = 5000
-env_file = ".env"
+### Caddy or cloudflared not installed
 
-[serve]
-start_command = "flask run --port 5000"
-watch_paths = ["app/", "templates/"]
-ignore_patterns = ["*.pyc", "__pycache__"]
+Run `homehost setup` — it will show the exact install command for your OS.
+
+### Port already in use
+
+HomeHost auto-picks the next free port in 8080–8099. You can also specify one:
+
+```bash
+homehost serve . --port 9000
+```
+
+### `--public` tunnel doesn't start
+
+`cloudflared` must be installed. Run `homehost setup` to check. Install manually:
+
+- **macOS:** `brew install cloudflared`
+- **Windows:** `winget install Cloudflare.cloudflared`
+
+### Run the full diagnostic
+
+```bash
+homehost doctor
 ```
 
 ---
 
 ## Contributing
 
-We welcome contributions of all kinds — bug reports, feature requests, documentation improvements, and code. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide.
-
 ```bash
-git clone https://github.com/homehost-dev/homehost.git
+git clone https://github.com/ParamChordiya/homehost.git
 cd homehost
 pip install -e ".[dev]"
-pytest
+pytest tests/unit/
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide.
 
 ---
 
 ## License
 
-HomeHost is released under the [MIT License](LICENSE). Copyright (c) 2026 HomeHost Contributors.
+MIT — see [LICENSE](LICENSE).
 
 ---
 
 <p align="center">
-  Made with care by developers who were tired of paying for hosting.
-  <br>
-  If HomeHost saves you money, consider giving it a ⭐ on GitHub.
+  Made with care for developers who were tired of paying for hosting.<br>
+  If HomeHost saves you time, consider giving it a ⭐ on <a href="https://github.com/ParamChordiya/homehost">GitHub</a>.
 </p>
