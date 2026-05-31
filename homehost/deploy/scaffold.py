@@ -123,7 +123,7 @@ def list_templates() -> list[dict[str, object]]:
                 "name": _TEMPLATE_DIR_MAP[t].replace("-", " ").title(),
                 "type": t.value,
                 "description": meta.get("description", ""),
-                "files": list(meta.get("files", [])),
+                "files": list(meta.get("files") or []),  # type: ignore[call-overload]
                 "available": tdir.exists(),
             }
         )

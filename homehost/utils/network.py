@@ -150,7 +150,7 @@ def get_public_ip(timeout: int = 5) -> str:
 # ---------------------------------------------------------------------------
 
 
-def format_bytes(num_bytes: int) -> str:
+def format_bytes(num_bytes: float) -> str:
     """Return a human-readable byte count string.
 
     Examples:
@@ -161,7 +161,7 @@ def format_bytes(num_bytes: int) -> str:
     if num_bytes < 1024:
         return f"{num_bytes} B"
     for unit in ("KB", "MB", "GB", "TB", "PB"):
-        num_bytes /= 1024.0
+        num_bytes = num_bytes / 1024.0
         if num_bytes < 1024 or unit == "PB":
             return f"{num_bytes:.1f} {unit}"
     return f"{num_bytes:.1f} PB"  # unreachable in practice

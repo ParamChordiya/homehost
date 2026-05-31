@@ -92,11 +92,11 @@ def get_os_version() -> str:
             # Attempt to get the friendly release name from winver
             import winreg  # type: ignore[import]
 
-            with winreg.OpenKey(
-                winreg.HKEY_LOCAL_MACHINE,
+            with winreg.OpenKey(  # type: ignore[attr-defined]
+                winreg.HKEY_LOCAL_MACHINE,  # type: ignore[attr-defined]
                 r"SOFTWARE\Microsoft\Windows NT\CurrentVersion",
             ) as key:
-                display_ver = winreg.QueryValueEx(key, "DisplayVersion")[0]
+                display_ver = winreg.QueryValueEx(key, "DisplayVersion")[0]  # type: ignore[attr-defined]
             return f"{release} ({display_ver})"
         except Exception:
             return platform.version()

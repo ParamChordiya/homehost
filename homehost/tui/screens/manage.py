@@ -103,7 +103,7 @@ class ManageScreen(Screen):
         with Horizontal(id="manage-header"):
             yield Label("📂  Manage Projects", id="manage-title")
             yield Label("", id="manage-count")
-        table = DataTable(id="project-table", zebra_stripes=True, cursor_type="row")
+        table: DataTable = DataTable(id="project-table", zebra_stripes=True, cursor_type="row")
         table.add_columns("Name", "Type", "Status", "Port", "Local URL", "Public URL")
         yield table
         with Horizontal(id="action-bar"):

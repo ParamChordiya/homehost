@@ -96,7 +96,7 @@ class StatusScreen(Screen):
 
     def on_mount(self) -> None:
         self.set_interval(3.0, self.refresh_status)
-        self.refresh_status()
+        self.call_after_refresh(self.refresh_status)
 
     async def refresh_status(self) -> None:
         """Reload project configs and rebuild cards."""
@@ -268,7 +268,7 @@ class StatusScreen(Screen):
             self.app.call_from_thread(self.app.notify, f"Started: {name}", severity="information")
         except Exception as exc:
             self.app.call_from_thread(self.app.notify, f"Start failed: {exc}", severity="error")
-        self.app.call_from_thread(self.refresh_status)
+        self.app.call_from_thread(self.refresh_status)  # type: ignore[arg-type]
 
     @work(thread=True)
     def _do_stop(self, name: str) -> None:
@@ -282,7 +282,7 @@ class StatusScreen(Screen):
             self.app.call_from_thread(self.app.notify, f"Stopped: {name}", severity="information")
         except Exception as exc:
             self.app.call_from_thread(self.app.notify, f"Stop failed: {exc}", severity="error")
-        self.app.call_from_thread(self.refresh_status)
+        self.app.call_from_thread(self.refresh_status)  # type: ignore[arg-type]
 
     @work(thread=True)
     def _do_restart(self, name: str) -> None:
@@ -296,4 +296,4 @@ class StatusScreen(Screen):
             self.app.call_from_thread(self.app.notify, f"Restarted: {name}", severity="information")
         except Exception as exc:
             self.app.call_from_thread(self.app.notify, f"Restart failed: {exc}", severity="error")
-        self.app.call_from_thread(self.refresh_status)
+        self.app.call_from_thread(self.refresh_status)  # type: ignore[arg-type]

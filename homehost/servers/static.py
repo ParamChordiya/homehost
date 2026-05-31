@@ -213,7 +213,7 @@ class StaticServer:
         await loop.run_in_executor(None, self._create_server, handler_cls)
 
         self._thread = threading.Thread(
-            target=self._server.serve_forever,  # type: ignore[union-attr]
+            target=self._server.serve_forever,  # type: ignore[attr-defined]
             daemon=True,
             name=f"homehost-static-{self._port}",
         )

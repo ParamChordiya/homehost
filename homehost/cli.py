@@ -685,7 +685,7 @@ def restart(
             console.print("  [yellow]↓[/yellow] Stopped")
 
         # Re-delegate to start command logic
-        ctx = typer.get_current_context()
+        ctx = typer.get_current_context()  # type: ignore[attr-defined]
         ctx.invoke(start, project=name)
 
     except typer.Exit:

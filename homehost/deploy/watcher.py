@@ -170,7 +170,7 @@ class ProjectWatcher:
             ignore_patterns=self._ignore_patterns,
             project_path=self._project_path,
         )
-        self._observer: Observer = Observer()
+        self._observer: Observer = Observer()  # type: ignore[valid-type]
         self._running = False
 
     # ------------------------------------------------------------------
@@ -181,25 +181,25 @@ class ProjectWatcher:
         """Start the watchdog observer thread."""
         if self._running:
             return
-        self._observer.schedule(
+        self._observer.schedule(  # type: ignore[attr-defined]
             self._handler,
             str(self._project_path),
             recursive=True,
         )
-        self._observer.start()
+        self._observer.start()  # type: ignore[attr-defined]
         self._running = True
 
     def stop(self) -> None:
         """Stop the file-system observer."""
         if not self._running:
             return
-        self._observer.stop()
-        self._observer.join(timeout=5)
+        self._observer.stop()  # type: ignore[attr-defined]
+        self._observer.join(timeout=5)  # type: ignore[attr-defined]
         self._running = False
 
     def is_running(self) -> bool:
         """Return True if the observer is active."""
-        return self._running and self._observer.is_alive()
+        return self._running and self._observer.is_alive()  # type: ignore[attr-defined]
 
     def add_ignore_pattern(self, pattern: str) -> None:
         """Add a glob pattern to the ignore list (e.g. ``'*.tmp'``)."""

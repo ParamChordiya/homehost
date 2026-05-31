@@ -305,7 +305,7 @@ class UninstallScreen(Screen):
         try:
             import subprocess
 
-            result = subprocess.run(
+            subprocess.run(
                 ["pkill", "-f", "cloudflared tunnel"],
                 capture_output=True,
                 timeout=5,
@@ -324,16 +324,16 @@ class UninstallScreen(Screen):
             import subprocess
             import sys
 
-            result = subprocess.run(
+            pip_result = subprocess.run(
                 [sys.executable, "-m", "pip", "uninstall", "-y", "homehost"],
                 capture_output=True,
                 text=True,
                 timeout=30,
             )
-            if result.returncode == 0:
+            if pip_result.returncode == 0:
                 self._log("   [#4ade80]Package uninstalled.[/]")
             else:
-                self._log(f"   [#fbbf24]pip uninstall returned {result.returncode}: {result.stderr.strip()}[/]")
+                self._log(f"   [#fbbf24]pip uninstall returned {pip_result.returncode}: {pip_result.stderr.strip()}[/]")
         except Exception as exc:
             self._log(f"   [#f87171]Error: {exc}[/]")
             success = False

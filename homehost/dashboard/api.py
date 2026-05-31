@@ -215,7 +215,6 @@ class _ConnectionManager:
         log.debug("ws client connected", total=len(self._clients))
 
     def disconnect(self, ws: WebSocket) -> None:
-        self._clients.discard_if_present(ws)
         with contextlib.suppress(ValueError):
             self._clients.remove(ws)
         log.debug("ws client disconnected", total=len(self._clients))
