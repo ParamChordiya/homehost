@@ -8,9 +8,12 @@ from __future__ import annotations
 
 import contextlib
 import logging
+import os
+import re
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 from typing import IO, TYPE_CHECKING
 
@@ -18,6 +21,9 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+# Only alphanumeric, underscore, dot, hyphen — safe to inject into Caddyfile
+_SAFE_USERNAME_RE = re.compile(r"^[A-Za-z0-9_.@-]{1,64}$")
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -33,6 +39,108 @@ def _log_dir(data_dir: Path, project_name: str) -> Path:
     p = data_dir / "projects" / project_name / "logs"
     p.mkdir(parents=True, exist_ok=True)
     return p
+
+
+def _validate_username(username: str) -> str:
+    """Validate and return username, raising ValueError if unsafe."""
+    if not _SAFE_USERNAME_RE.match(username):
+        raise ValueError(
+            f"Invalid username {username!r}. Only letters, digits, _, ., @, and - are allowed (max 64 chars)."
+        )
+    return username
+
+
+def _cors_block(origins: list[str]) -> list[str]:
+    """Return Caddyfile lines for CORS support.
+
+    Handles preflight (OPTIONS) correctly: the ``handle @cors_preflight``
+    block terminates the chain for OPTIONS requests so the ``basicauth``
+    directive below it is never evaluated for preflights.  Without this,
+    browsers reject cross-origin requests before even sending credentials.
+    """
+    if not origins:
+        return []
+
+    origin = origins[0]  # primary allowed origin
+    return [
+        "    # CORS — preflight must resolve before auth",
+        "    @cors_preflight method OPTIONS",
+        "    handle @cors_preflight {",
+        f'        header Access-Control-Allow-Origin "{origin}"',
+        '        header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, PATCH, OPTIONS"',
+        '        header Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"',
+        '        header Access-Control-Max-Age "7200"',
+        '        header Access-Control-Allow-Credentials "true"',
+        "        respond 204",
+        "    }",
+        f'    header Access-Control-Allow-Origin "{origin}"',
+        '    header Access-Control-Allow-Credentials "true"',
+        "",
+    ]
+
+
+def _auth_block(auth_mode: str, username: str, password_hash: str, api_key_hash: str) -> list[str]:
+    """Return Caddyfile lines for authentication.
+
+    Uses a ``@non_preflight`` matcher so CORS preflight (OPTIONS) requests
+    are exempt — the CORS preflight ``handle`` block above terminates first.
+
+    Both modes use Caddy's ``basicauth`` directive with a ``$2a$`` bcrypt
+    hash.  For ``apikey`` mode the username is fixed to ``api`` and the
+    hash is of the API key; clients send ``Authorization: Basic base64(api:<key>)``.
+    """
+    if auth_mode == "none":
+        return []
+
+    if auth_mode == "basic":
+        if not username or not password_hash:
+            return []
+        safe_user = _validate_username(username)
+        return [
+            "    # Auth — OPTIONS exempt (CORS preflight handled above)",
+            "    @non_preflight not method OPTIONS",
+            "    basicauth @non_preflight {",
+            f"        {safe_user} {password_hash}",
+            "    }",
+            "",
+        ]
+
+    if auth_mode == "apikey":
+        if not api_key_hash:
+            return []
+        return [
+            "    # API key auth — clients send: Authorization: Basic base64(api:<key>)",
+            "    @non_preflight not method OPTIONS",
+            "    basicauth @non_preflight {",
+            f"        api {api_key_hash}",
+            "    }",
+            "",
+        ]
+
+    return []
+
+
+def _log_block(log_file_path: str, strip_auth: bool = False) -> list[str]:
+    """Return Caddyfile log block, optionally stripping the Authorization header."""
+    if not strip_auth:
+        return [
+            "    log {",
+            f"        output file {log_file_path}",
+            "        format json",
+            "    }",
+        ]
+    # Filter out Authorization header so API keys are never written to disk
+    return [
+        "    log {",
+        f"        output file {log_file_path}",
+        "        format filter {",
+        "            wrap json",
+        "            fields {",
+        "                request>headers>Authorization delete",
+        "            }",
+        "        }",
+        "    }",
+    ]
 
 
 # ── CaddyManager ──────────────────────────────────────────────────────────────
@@ -58,15 +166,25 @@ class CaddyManager:
         domain: str = "",
         security_headers: bool = True,
         rate_limit: int = 100,
-        basic_auth: bool = False,
+        auth_mode: str = "none",
         username: str = "",
         password_hash: str = "",
+        api_key_hash: str = "",
+        cors_origins: list[str] | None = None,
     ) -> str:
         """Generate Caddyfile content for a static site."""
         site_addr = domain.strip() if domain.strip() else f":{port}"
         log_file = _log_dir(self._data_dir, project_name) / "access.log"
+        origins = cors_origins or []
+        has_auth = auth_mode in ("basic", "apikey")
 
         lines: list[str] = [f"{site_addr} {{"]
+
+        # CORS must come first so preflight terminates before auth check
+        lines += _cors_block(origins)
+
+        # Auth block (exempt OPTIONS via @non_preflight matcher)
+        lines += _auth_block(auth_mode, username, password_hash, api_key_hash)
 
         lines += [
             f"    root * {serve_dir}",
@@ -95,33 +213,15 @@ class CaddyManager:
                 "",
             ]
 
-        # Basic auth
-        if basic_auth and username and password_hash:
-            lines += [
-                "    basicauth {",
-                f"        {username} {password_hash}",
-                "    }",
-                "",
-            ]
-
-        # Rate limiting (caddy-ratelimit module, skipped with comment if not available)
         lines += [
             "    # Rate limiting requires the caddy-ratelimit plugin.",
             f"    # If installed: rate_limit {{events {rate_limit} / 1m}}",
             "",
+            "    encode gzip zstd",
+            "",
         ]
 
-        # Encode (gzip/zstd)
-        lines += ["    encode gzip zstd", ""]
-
-        # Access log
-        lines += [
-            "    log {",
-            "        output file " + str(log_file),
-            "        format json",
-            "    }",
-        ]
-
+        lines += _log_block(str(log_file), strip_auth=has_auth)
         lines.append("}")
         return "\n".join(lines) + "\n"
 
@@ -133,12 +233,25 @@ class CaddyManager:
         domain: str = "",
         security_headers: bool = True,
         rate_limit: int = 100,
+        auth_mode: str = "none",
+        username: str = "",
+        password_hash: str = "",
+        api_key_hash: str = "",
+        cors_origins: list[str] | None = None,
     ) -> str:
         """Generate Caddyfile content for reverse proxy to app server."""
         site_addr = domain.strip() if domain.strip() else f":{port}"
         log_file = _log_dir(self._data_dir, project_name) / "access.log"
+        origins = cors_origins or []
+        has_auth = auth_mode in ("basic", "apikey")
 
         lines: list[str] = [f"{site_addr} {{"]
+
+        # CORS must come first so preflight terminates before auth check
+        lines += _cors_block(origins)
+
+        # Auth block (exempt OPTIONS via @non_preflight matcher)
+        lines += _auth_block(auth_mode, username, password_hash, api_key_hash)
 
         lines += [
             f"    reverse_proxy localhost:{upstream_port} {{",
@@ -159,7 +272,6 @@ class CaddyManager:
             "",
         ]
 
-        # Security headers
         if security_headers:
             lines += [
                 "    header {",
@@ -172,33 +284,41 @@ class CaddyManager:
                 "",
             ]
 
-        # Rate limiting comment
         lines += [
             "    # Rate limiting requires the caddy-ratelimit plugin.",
             f"    # If installed: rate_limit {{events {rate_limit} / 1m}}",
             "",
+            "    encode gzip zstd",
+            "",
         ]
 
-        # Encode
-        lines += ["    encode gzip zstd", ""]
-
-        # Access log
-        lines += [
-            "    log {",
-            "        output file " + str(log_file),
-            "        format json",
-            "    }",
-        ]
-
+        lines += _log_block(str(log_file), strip_auth=has_auth)
         lines.append("}")
         return "\n".join(lines) + "\n"
 
     def write_project_caddyfile(self, project_name: str, content: str) -> Path:
-        """Write to ~/.homehost/projects/<name>/Caddyfile."""
+        """Write to ~/.homehost/projects/<name>/Caddyfile with 0600 permissions.
+
+        Restrictive permissions prevent other local users from reading the
+        bcrypt hashes stored in the basicauth block.
+        """
         project_dir = _projects_subdir(self._data_dir) / project_name
         project_dir.mkdir(parents=True, exist_ok=True)
         caddyfile = project_dir / "Caddyfile"
-        caddyfile.write_text(content, encoding="utf-8")
+
+        # Atomic write with restricted permissions
+        data = content.encode("utf-8")
+        fd, tmp = tempfile.mkstemp(dir=project_dir, suffix=".tmp")
+        try:
+            os.write(fd, data)
+            os.close(fd)
+            os.chmod(tmp, 0o600)
+            os.replace(tmp, caddyfile)
+        except Exception:
+            with contextlib.suppress(OSError):
+                os.unlink(tmp)
+            raise
+
         logger.debug("Wrote Caddyfile for %s at %s", project_name, caddyfile)
         return caddyfile
 

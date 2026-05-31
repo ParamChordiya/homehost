@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import os
 import sys
 import tempfile
@@ -106,15 +107,25 @@ class ProjectNetworkConfig:
     access: str = "local"  # "local" | "public"
     subdomain: str = ""
     custom_domain: str = ""
+    # Quick tunnel (ephemeral, no account needed)
     tunnel_id: str = ""
+    # Named tunnel (stable URL, requires Cloudflare account)
+    tunnel_name: str = ""
+    tunnel_hostname: str = ""  # e.g. api.paramchordiya.dev
+    tunnel_credentials_file: str = ""  # path to ~/.cloudflared/<id>.json
 
 
 @dataclass
 class ProjectSecurityConfig:
-    basic_auth: bool = False
+    # Auth mode: "none" | "basic" | "apikey"
+    auth_mode: str = "none"
     username: str = ""
-    password_hash: str = ""
+    password_hash: str = ""  # $2a$ bcrypt hash (Caddy-compatible)
+    api_key_hash: str = ""  # $2a$ bcrypt hash of the API key
     rate_limit: int = 100
+    cors_origins: list[str] = field(default_factory=list)  # e.g. ["https://user.github.io"]
+    # Legacy field — kept for backwards compatibility, maps to auth_mode == "basic"
+    basic_auth: bool = False
 
 
 @dataclass
@@ -145,17 +156,23 @@ def _load_toml(path: Path) -> dict[str, Any]:
         return tomllib.load(f)
 
 
-def _atomic_write(path: Path, data: bytes) -> None:
-    """Write atomically via a temp file in the same directory."""
+def _atomic_write(path: Path, data: bytes, mode: int = 0o600) -> None:
+    """Write atomically via a temp file in the same directory.
+
+    Files are written with restrictive permissions (default 0600 — owner
+    read/write only) since config files may contain bcrypt hashes.
+    """
     dir_ = path.parent
     dir_.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=dir_, suffix=".tmp")
     try:
         os.write(fd, data)
         os.close(fd)
+        os.chmod(tmp, mode)
         os.replace(tmp, path)
     except Exception:
-        os.unlink(tmp)
+        with contextlib.suppress(OSError):
+            os.unlink(tmp)
         raise
 
 
@@ -257,12 +274,21 @@ def load_project_config(name: str) -> ProjectConfig:
     cfg.network.subdomain = n.get("subdomain", cfg.network.subdomain)
     cfg.network.custom_domain = n.get("custom_domain", cfg.network.custom_domain)
     cfg.network.tunnel_id = n.get("tunnel_id", cfg.network.tunnel_id)
+    cfg.network.tunnel_name = n.get("tunnel_name", cfg.network.tunnel_name)
+    cfg.network.tunnel_hostname = n.get("tunnel_hostname", cfg.network.tunnel_hostname)
+    cfg.network.tunnel_credentials_file = n.get("tunnel_credentials_file", cfg.network.tunnel_credentials_file)
 
     sec = raw.get("security", {})
+    cfg.security.auth_mode = sec.get("auth_mode", cfg.security.auth_mode)
     cfg.security.basic_auth = sec.get("basic_auth", cfg.security.basic_auth)
     cfg.security.username = sec.get("username", cfg.security.username)
     cfg.security.password_hash = sec.get("password_hash", cfg.security.password_hash)
+    cfg.security.api_key_hash = sec.get("api_key_hash", cfg.security.api_key_hash)
     cfg.security.rate_limit = sec.get("rate_limit", cfg.security.rate_limit)
+    cfg.security.cors_origins = sec.get("cors_origins", cfg.security.cors_origins)
+    # Backwards compat: migrate basic_auth bool → auth_mode
+    if cfg.security.basic_auth and cfg.security.auth_mode == "none":
+        cfg.security.auth_mode = "basic"
 
     w = raw.get("watcher", {})
     cfg.watcher.enabled = w.get("enabled", cfg.watcher.enabled)
@@ -292,12 +318,18 @@ def save_project_config(cfg: ProjectConfig) -> None:
             "subdomain": cfg.network.subdomain,
             "custom_domain": cfg.network.custom_domain,
             "tunnel_id": cfg.network.tunnel_id,
+            "tunnel_name": cfg.network.tunnel_name,
+            "tunnel_hostname": cfg.network.tunnel_hostname,
+            "tunnel_credentials_file": cfg.network.tunnel_credentials_file,
         },
         "security": {
+            "auth_mode": cfg.security.auth_mode,
             "basic_auth": cfg.security.basic_auth,
             "username": cfg.security.username,
             "password_hash": cfg.security.password_hash,
+            "api_key_hash": cfg.security.api_key_hash,
             "rate_limit": cfg.security.rate_limit,
+            "cors_origins": cfg.security.cors_origins,
         },
         "watcher": {
             "enabled": cfg.watcher.enabled,

@@ -32,8 +32,38 @@ def hash_password(password: str) -> str:
 
     Returns:
         A bcrypt hash string (e.g. ``'$2b$12$...'``).
+
+    Raises:
+        ValueError: If the password exceeds bcrypt's 72-byte input limit.
     """
+    if len(password.encode("utf-8")) > 72:
+        raise ValueError(
+            "Password exceeds bcrypt's 72-byte limit — bcrypt silently truncates "
+            "beyond 72 bytes, which can make two different passwords hash-equal."
+        )
     hashed: bytes = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+    return hashed.decode("utf-8")
+
+
+def hash_password_for_caddy(password: str) -> str:
+    """Hash a password using bcrypt with the ``$2a$`` prefix required by Caddy v2.
+
+    Caddy's ``basicauth`` directive requires hashes in the ``$2a$`` format.
+    Python's :func:`hash_password` produces ``$2b$`` hashes (equivalent but
+    Caddy's config loader rejects them at startup).
+
+    Args:
+        password: The plain-text password or API key to hash.
+
+    Returns:
+        A ``$2a$12$...`` bcrypt hash string suitable for Caddyfile injection.
+
+    Raises:
+        ValueError: If the password exceeds bcrypt's 72-byte input limit.
+    """
+    if len(password.encode("utf-8")) > 72:
+        raise ValueError("Password exceeds bcrypt's 72-byte input limit.")
+    hashed: bytes = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(prefix=b"2a"))
     return hashed.decode("utf-8")
 
 
@@ -47,9 +77,12 @@ def verify_password(password: str, hash: str) -> bool:
     Returns:
         ``True`` if the password matches the hash, ``False`` otherwise.
     """
+    import logging
+
     try:
         return bcrypt.checkpw(password.encode("utf-8"), hash.encode("utf-8"))
-    except Exception:
+    except Exception as exc:
+        logging.getLogger(__name__).debug("verify_password failed: %s", exc)
         return False
 
 
@@ -91,6 +124,23 @@ def generate_strong_password(length: int = 16) -> str:
     segment_size = length // 4
     segments = ["".join(chars[i * segment_size : (i + 1) * segment_size]) for i in range(4)]
     return "-".join(segments)
+
+
+# ── API key generation ────────────────────────────────────────────────────────
+
+
+def generate_api_key() -> str:
+    """Generate a cryptographically random API key.
+
+    Uses :func:`secrets.token_urlsafe` to produce 32 bytes (256 bits) of
+    entropy encoded as URL-safe base64.  The key is prefixed with ``hh_sk_``
+    so it is visually identifiable and can be excluded by secret scanners.
+
+    Returns:
+        A 46-character string like ``'hh_sk_Xk9mP2nQrT4w...'``.
+        Show this to the user **once** — only the bcrypt hash is stored.
+    """
+    return "hh_sk_" + secrets.token_urlsafe(32)
 
 
 # ── Credential storage ─────────────────────────────────────────────────────────

@@ -1333,6 +1333,327 @@ def new(
         handle_error(exc, "HH-015")
 
 
+# ── tunnel subcommands ─────────────────────────────────────────────────────────
+
+tunnel_app = typer.Typer(
+    name="tunnel",
+    help="Manage named Cloudflare Tunnels for stable public URLs.",
+    rich_markup_mode="rich",
+)
+app.add_typer(tunnel_app, name="tunnel")
+
+
+@tunnel_app.command("setup")
+def tunnel_setup(
+    project: str = typer.Argument(..., help="Project name to configure a named tunnel for."),
+    hostname: str = typer.Option("", "--hostname", "-H", help="Stable public hostname (e.g. api.yoursite.dev)."),
+    tunnel_name: str = typer.Option("", "--name", "-n", help="Cloudflare tunnel name (default: <project>-tunnel)."),
+    skip_login: bool = typer.Option(False, "--skip-login", help="Skip cloudflared login step."),
+    skip_dns: bool = typer.Option(False, "--skip-dns", help="Skip automatic DNS routing (configure manually)."),
+) -> None:
+    """Configure a named Cloudflare Tunnel for a project.
+
+    Named tunnels give your project a permanent, stable URL (e.g.
+    https://api.yoursite.dev) that survives restarts.  You need a free
+    Cloudflare account and your domain's DNS managed by Cloudflare.
+
+    Flow:
+      1. cloudflared login   (opens browser — once per machine)
+      2. cloudflared tunnel create <name>
+      3. cloudflared tunnel route dns <id> <hostname>
+      4. Save config to project
+    """
+    try:
+        from homehost.core.config import load_global_config, load_project_config, save_project_config
+        from homehost.network.named_tunnel import NamedTunnelManager
+
+        # Load project to confirm it exists
+        cfg = load_project_config(project)
+        global_cfg = load_global_config()
+        cloudflared = global_cfg.server.cloudflared_path or "cloudflared"
+
+        manager = NamedTunnelManager(cloudflared, Path.home() / ".homehost")
+
+        console.print(
+            Panel(
+                f"[bold]Named Tunnel Setup[/bold] — {project}\n\n"
+                "Creates a stable public URL for your project that never changes\n"
+                "across restarts.  Requires a [bold]free Cloudflare account[/bold].",
+                title="[blue]homehost tunnel setup[/blue]",
+                border_style="blue",
+            )
+        )
+
+        # ── Step 1: Login ──────────────────────────────────────────────────────
+        if not skip_login:
+            if manager.is_logged_in():
+                console.print("  [green]✓[/green] Already logged in to Cloudflare")
+            else:
+                console.print("\n  [bold]Step 1/3 — Login to Cloudflare[/bold]")
+                console.print("  [dim]Opening browser for cloudflared login…[/dim]")
+                ok = manager.login()
+                if not ok:
+                    err_console.print("[red]Cloudflare login failed or timed out.[/red]")
+                    err_console.print("[dim]Run 'cloudflared login' manually, then re-run this command.[/dim]")
+                    raise typer.Exit(1)
+                console.print("  [green]✓[/green] Logged in to Cloudflare")
+        else:
+            console.print("  [dim]Skipping login step.[/dim]")
+
+        # ── Step 2: Create tunnel ──────────────────────────────────────────────
+        tname = tunnel_name or f"{project}-tunnel"
+        console.print(f"\n  [bold]Step 2/3 — Create tunnel[/bold]  [dim](name: {tname})[/dim]")
+
+        with console.status(f"[blue]Creating tunnel '{tname}'…[/blue]"):
+            tunnel_id, creds_file = manager.create_tunnel(tname)
+
+        console.print(f"  [green]✓[/green] Tunnel created: [bold]{tunnel_id[:8]}…[/bold]")
+        console.print(f"  [dim]Credentials: {creds_file}[/dim]")
+
+        # ── Step 3: Hostname + DNS ─────────────────────────────────────────────
+        if not hostname:
+            console.print("\n  [bold]Step 3/3 — Configure hostname[/bold]")
+            hostname = typer.prompt(
+                "  Stable public hostname (e.g. api.yoursite.dev)",
+                default=f"{project}.yoursite.dev",
+            )
+
+        dns_ok = False
+        if not skip_dns:
+            with console.status(f"[blue]Routing DNS: {hostname} → tunnel…[/blue]"):
+                try:
+                    manager.route_dns(tunnel_id, hostname)
+                    dns_ok = True
+                    console.print(f"  [green]✓[/green] DNS routed: {hostname} → tunnel")
+                except RuntimeError as e:
+                    console.print(f"  [yellow]![/yellow] Automatic DNS routing failed: {e}")
+
+        if not dns_ok:
+            console.print(
+                f"\n  [yellow]Manual DNS setup required.[/yellow]\n"
+                f"  Add this CNAME record at your DNS provider:\n\n"
+                f"    [bold]{hostname}[/bold]  CNAME  [bold]{NamedTunnelManager.cname_target(tunnel_id)}[/bold]\n"
+            )
+
+        # ── Save config ────────────────────────────────────────────────────────
+        cfg.network.tunnel_name = tname
+        cfg.network.tunnel_id = tunnel_id
+        cfg.network.tunnel_hostname = hostname
+        cfg.network.tunnel_credentials_file = str(creds_file)
+        cfg.network.access = "public"
+        save_project_config(cfg)
+
+        console.print(
+            Panel(
+                f"[green]Named tunnel configured for '{project}'[/green]\n\n"
+                f"  Public URL : [bold]https://{hostname}[/bold]\n"
+                f"  Tunnel ID  : {tunnel_id}\n\n"
+                "Restart to activate:\n"
+                f"  [bold]homehost restart {project}[/bold]",
+                title="[green]Tunnel ready[/green]",
+                border_style="green",
+            )
+        )
+
+    except typer.Exit:
+        raise
+    except Exception as exc:
+        handle_error(exc, "HH-020")
+
+
+@tunnel_app.command("list")
+def tunnel_list() -> None:
+    """List named tunnels registered in your Cloudflare account."""
+    try:
+        from homehost.core.config import load_global_config
+        from homehost.network.named_tunnel import NamedTunnelManager
+
+        global_cfg = load_global_config()
+        cloudflared = global_cfg.server.cloudflared_path or "cloudflared"
+        manager = NamedTunnelManager(cloudflared, Path.home() / ".homehost")
+
+        with console.status("[blue]Fetching tunnels from Cloudflare…[/blue]"):
+            tunnels = manager.list_tunnels()
+
+        if not tunnels:
+            console.print("[yellow]No named tunnels found (or not logged in).[/yellow]")
+            console.print("[dim]Run: homehost tunnel setup <project>[/dim]")
+            return
+
+        table = Table(title="Cloudflare Named Tunnels", border_style="blue")
+        table.add_column("Name", style="bold")
+        table.add_column("ID")
+        table.add_column("Status")
+        table.add_column("Created")
+
+        for t in tunnels:
+            table.add_row(t.get("name", ""), t.get("id", "")[:13] + "…", t.get("status", ""), t.get("created", "")[:10])
+
+        console.print(table)
+
+    except typer.Exit:
+        raise
+    except Exception as exc:
+        handle_error(exc, "HH-021")
+
+
+# ── secure command ─────────────────────────────────────────────────────────────
+
+
+@app.command()
+def secure(
+    project: str = typer.Argument(..., help="Project name to configure auth for."),
+    disable: bool = typer.Option(False, "--disable", help="Remove all auth from this project."),
+) -> None:
+    """Add password or API-key protection to a project's public URL.
+
+    Two modes:
+
+    [bold]basic[/bold]   — Browser shows a username/password dialog.
+              Good for web UIs and dashboards.
+
+    [bold]apikey[/bold]  — Clients send an Authorization header.
+              Good for API backends called from JavaScript (GitHub Pages etc).
+              The key is generated for you and shown once.
+
+    The actual password/key is never stored — only its bcrypt hash goes
+    into the Caddyfile and project config.
+    """
+    try:
+        from homehost.core.config import load_project_config, save_project_config
+        from homehost.security.secrets import (
+            generate_api_key,
+            generate_strong_password,
+            hash_password_for_caddy,
+        )
+
+        cfg = load_project_config(project)
+
+        if disable:
+            cfg.security.auth_mode = "none"
+            cfg.security.username = ""
+            cfg.security.password_hash = ""
+            cfg.security.api_key_hash = ""
+            save_project_config(cfg)
+            console.print(f"[green]✓[/green] Auth disabled for '{project}'. Restart to apply.")
+            return
+
+        console.print(
+            Panel(
+                f"[bold]Security Setup[/bold] — {project}\n\n"
+                "Protect your public URL so only people with credentials can access it.\n"
+                "The password/key is shown [bold]once[/bold] and never stored in plaintext.",
+                title="[blue]homehost secure[/blue]",
+                border_style="blue",
+            )
+        )
+
+        # ── Choose auth mode ───────────────────────────────────────────────────
+        console.print("\n  Choose protection mode:\n")
+        console.print("    [bold][1][/bold]  Basic Auth  — browser username/password dialog")
+        console.print("    [bold][2][/bold]  API Key     — Authorization header (for JS frontends)")
+        console.print("    [bold][0][/bold]  Disable     — remove existing auth\n")
+
+        raw_mode = typer.prompt("  Mode", default="2")
+        if raw_mode.strip() == "0":
+            cfg.security.auth_mode = "none"
+            cfg.security.username = ""
+            cfg.security.password_hash = ""
+            cfg.security.api_key_hash = ""
+            save_project_config(cfg)
+            console.print("[green]✓[/green] Auth disabled.")
+            return
+
+        auth_mode = "basic" if raw_mode.strip() == "1" else "apikey"
+
+        # ── Configure credentials ──────────────────────────────────────────────
+        if auth_mode == "basic":
+            username = typer.prompt("\n  Username", default="admin")
+            use_generated = typer.confirm("  Generate a strong password automatically?", default=True)
+            if use_generated:
+                password = generate_strong_password(16)
+            else:
+                password = typer.prompt("  Password", hide_input=True, confirmation_prompt=True)
+
+            with console.status("[blue]Hashing password…[/blue]"):
+                pw_hash = hash_password_for_caddy(password)
+
+            cfg.security.auth_mode = "basic"
+            cfg.security.username = username
+            cfg.security.password_hash = pw_hash
+            cfg.security.api_key_hash = ""
+
+            console.print(
+                Panel(
+                    f"  [bold]Username:[/bold]  {username}\n"
+                    f"  [bold]Password:[/bold]  [green]{password}[/green]\n\n"
+                    "  [dim]Save this — the password cannot be recovered.[/dim]",
+                    title="[yellow]Credentials (shown once)[/yellow]",
+                    border_style="yellow",
+                )
+            )
+
+        else:  # apikey
+            api_key = generate_api_key()
+
+            with console.status("[blue]Hashing API key…[/blue]"):
+                key_hash = hash_password_for_caddy(api_key)
+
+            cfg.security.auth_mode = "apikey"
+            cfg.security.username = ""
+            cfg.security.password_hash = ""
+            cfg.security.api_key_hash = key_hash
+
+            console.print(
+                Panel(
+                    f"  [bold]API Key:[/bold]  [green]{api_key}[/green]\n\n"
+                    "  [dim]This is shown ONCE and never stored. Save it securely.[/dim]\n\n"
+                    "  [bold yellow]DO NOT commit this key to your GitHub repo![/bold yellow]\n\n"
+                    "  Store in [bold].env[/bold] (gitignored) and load at build time:\n"
+                    f"    [dim]VITE_API_KEY={api_key}[/dim]\n\n"
+                    "  Usage in JavaScript (e.g. from GitHub Pages):\n"
+                    "    [dim]fetch(url, {{\n"
+                    "      headers: {{\n"
+                    "        Authorization: 'Basic ' + btoa('api:' + import.meta.env.VITE_API_KEY)\n"
+                    "      }}\n"
+                    "    }})[/dim]",
+                    title="[yellow]API Key (shown once)[/yellow]",
+                    border_style="yellow",
+                )
+            )
+
+        # ── Configure CORS ─────────────────────────────────────────────────────
+        console.print()
+        add_cors = typer.confirm("  Configure CORS? (allow cross-origin requests from your frontend)", default=True)
+
+        if add_cors:
+            origin = typer.prompt(
+                "  Frontend URL (e.g. https://yourname.github.io)",
+                default="https://paramchordiya.github.io",
+            )
+            cfg.security.cors_origins = [origin.strip().rstrip("/")]
+            console.print(f"  [green]✓[/green] CORS configured for: {cfg.security.cors_origins[0]}")
+        else:
+            cfg.security.cors_origins = []
+
+        save_project_config(cfg)
+
+        console.print(
+            Panel(
+                f"[green]Auth configured for '{project}'[/green] (mode: {auth_mode})\n\n"
+                "Restart the project to apply:\n"
+                f"  [bold]homehost restart {project}[/bold]",
+                title="[green]Done[/green]",
+                border_style="green",
+            )
+        )
+
+    except typer.Exit:
+        raise
+    except Exception as exc:
+        handle_error(exc, "HH-022")
+
+
 # ── Entry point ────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":

@@ -145,9 +145,16 @@ class ServerManager:
 
         # ── Start tunnel ──────────────────────────────────────────────────────
         if cfg.network.access == "public":
-            _log("Starting Cloudflare tunnel for public access…")
+            use_named = bool(cfg.network.tunnel_hostname and cfg.network.tunnel_credentials_file)
+            if use_named:
+                _log(f"Starting named tunnel → https://{cfg.network.tunnel_hostname}…")
+            else:
+                _log("Starting Cloudflare quick tunnel for public access…")
             try:
-                tunnel_url = self._start_tunnel(name, port, cfg)
+                if use_named:
+                    tunnel_url = self._start_named_tunnel(name, port, cfg)
+                else:
+                    tunnel_url = self._start_quick_tunnel(name, port, cfg)
                 running.public_url = tunnel_url
                 _log(f"Public URL: {tunnel_url}")
             except Exception as exc:
@@ -280,18 +287,36 @@ class ServerManager:
         log_file = self._log_file(name)
         self._process_manager.start(name, command, project_dir, env=env, log_file=log_file)
 
-    def _start_tunnel(self, name: str, port: int, cfg: ProjectConfig) -> str:
+    def _start_quick_tunnel(self, name: str, port: int, cfg: ProjectConfig) -> str:
         """Start a Cloudflare quick tunnel. Returns the public URL."""
         from homehost.core.config import load_global_config
+        from homehost.network.tunnel import TunnelManager
 
         global_cfg = load_global_config()
         cloudflared_path = global_cfg.server.cloudflared_path or "cloudflared"
-
-        from homehost.network.tunnel import TunnelManager
-
         tm = TunnelManager(cloudflared_path, self._process_manager)
         info = tm.start_quick_tunnel(name, port)
         return info.url
+
+    def _start_named_tunnel(self, name: str, port: int, cfg: ProjectConfig) -> str:
+        """Start a named Cloudflare Tunnel. Returns the stable public URL."""
+        from pathlib import Path as _Path
+
+        from homehost.core.config import load_global_config
+        from homehost.network.named_tunnel import NamedTunnelManager
+
+        global_cfg = load_global_config()
+        cloudflared_path = global_cfg.server.cloudflared_path or "cloudflared"
+        manager = NamedTunnelManager(cloudflared_path, _Path.home() / ".homehost")
+        info = manager.start(
+            project_name=name,
+            tunnel_id=cfg.network.tunnel_id,
+            credentials_file=_Path(cfg.network.tunnel_credentials_file),
+            hostname=cfg.network.tunnel_hostname,
+            local_port=port,
+            process_manager=self._process_manager,
+        )
+        return info.public_url
 
     def _log_file(self, name: str) -> Path:
         log_dir = Path.home() / ".homehost" / "projects" / name / "logs"
